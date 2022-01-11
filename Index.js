@@ -4,13 +4,13 @@ const bot = new Discord.Client();
 const config = require('./Config.json');
 const token = config.token;
 const moment = require('moment');
-//config ids
-const logsChannelID = config.logsChannelID;
+
 
 var date = new Date();
 var FileLogDate = moment(date).format("YYYY.MM.DD")
 const fs = require('fs');
 const {RichEmbed} = require("discord.js.old");
+const BadWords = ["nigga", "nigger" , "motherfucker", "cocksucker", "cock", "dick","rape"]
 
 var logger = fs.createWriteStream(`./logs/logs${FileLogDate}.txt`, {
     flags: 'a' // 'a' means appending (old data will be preserved)
@@ -19,24 +19,52 @@ var writeLine = (line) => logger.write(`\n${line}`);
 
 
 bot.on('ready', () => {
+
+
     var ReadyDate = moment(date).format('DD MM YYYY hh:mm:ss')
     console.log(`Logged in as ${bot.user.tag}!`);
     writeLine(ReadyDate +` Logged in as ${bot.user.tag}!`)
 });
 
 
+//             default log date and logging structure
+//
+//             Currentdate = new Date()
+//             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
+//
 //             writeLine(logDate + " Helping " + "||" + message.author.tag + "||" + message.guild.name)
 //             bot.channels.get(logsChannelID).send( "Helping " + " | " + message.author.tag + " | " + message.guild.name);
 //             console.log(logDate + " Helping " + "||" + message.author.tag + "||" + message.guild.name)
-//             Currentdate = new Date()
-//             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
+
 
 
 
 
 bot.on('message', message => {
+
     var Currentdate = new Date()
     var logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
+
+    const logsChannel = message.guild.channels.find(channel => channel.name.includes("logs"));
+    const logsChannelID = logsChannel.id;
+
+    if (message.author.bot){return;}
+
+    if (!message.member.hasPermission("ADMINISTRATOR")) {
+        for (var i = 0; i < BadWords.length; i++) {
+            if (message.content.includes(BadWords[i])) {
+
+                message.delete()
+                message.channel.send("that words is not acccepted")
+                bot.channels.get(logsChannelID).send(logDate + " message deleted: " + "`" + message + "`" + " contained " + "`" + BadWords[i] + "`" + " in " + `<#${message.channel.id}>`)
+                return;
+            }
+        }
+    }
+
+    const MuteRole = message.guild.roles.find(role => role.name === "Mute");
+
+
     if(message.content.includes(config.prefix)){
     let args = message.content.substring(config.prefix.length).split(" ");
 
@@ -49,7 +77,15 @@ bot.on('message', message => {
             const HelpEmbed = new RichEmbed()
                 .setColor('#38F20A')
                 .setTitle("Lord Bostengard's Commands")
-                .addField( 'Command list', "https://docs.google.com/document/d/1R9QWSAcFr-Zxl1C9Mr74dnbxjKu3CgNJbhwCi-sCHok/edit?usp=sharing")
+                .addField( 'Aboutme', "Shows a full-of-info embed of yourself or in case of mentioning someone of that person `?aboutme < mention >`")
+                .addField( 'Delete', "deletes a custom amount(max 100) of messages in a channel `?delete < quantity >`")
+                .addField( 'Spam', "Sends a custom amount of messages in a channel (its slow) `?spam < quantity >`")
+                .addField( 'warn', "Warns a member and sends a dm to the mentioned user `?warn < mention > < reason >`")
+                .addField( 'kick', "Kicks a member and sends a dm to the mentioned user `?kick < mention > < reason >`")
+                .addField( 'softban', "Bans and unbans a member and sends a dm to the mentioned user `?softban < mention > < reason >`")
+                .addField( 'ban', "Bans a member and sends a dm to the mentioned user `?ban < mention > < reason >`")
+                .addField("mute", "mutes a user ands sends a dm to the mentioned user (to works need a special permissions channel with the 'Muted' with the send messages permissions to off `?mute < mention > < reason >`")
+                .addField( 'Slowmode', "Changes the slowmode in a channel `?slowmode < #channel > < reason >`")
                 .setTimestamp()
 
             message.channel.send(HelpEmbed).catch(console.error)
@@ -70,18 +106,22 @@ bot.on('message', message => {
                 .setTitle("RANDOM NUMBER")
                 .addField('Your Random Number is :', Number)
                 .setTimestamp()
-
-            message.channel.send(RandomNumberEmbed);
-            writeLine(logDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
-            bot.channels.get(logsChannelID).send(logDate +  " Random " + amount +  " | " + message.author.tag + " | " + message.guild.name + `<#${message.channel.id}>`).catch(console.error)
-            console.log(logDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
+            if(isNaN(amount)){
+                message.reply("thats not a number")
+                return;
+            }else{
+                message.channel.send(RandomNumberEmbed);
+                writeLine(logDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
+                bot.channels.get(logsChannelID).send(logDate +  " Random " + amount +  " | " + message.author.tag + " | " + message.guild.name + `<#${message.channel.id}>`).catch(console.error)
+                console.log(logDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
+            }
 
             break;
 
         case "aboutme":
             Currentdate = new Date()
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
-
+            const AboutmeTarget = message.mentions.users.first()
             const HighestRole = message.member.highestRole.id
 
             const AboutEmbed = new RichEmbed()
@@ -94,12 +134,23 @@ bot.on('message', message => {
                 .setImage(message.author.avatarURL)
                 .setTimestamp()
 
+            const AboutNoEmbed = new RichEmbed()
+                .setColor('#38F20A')
+                .setTitle("User Info")
+                .addField( 'Created', AboutmeTarget.createdAt)
+                .addField( 'User ID', AboutmeTarget.id,true)
+                .addField( 'Avatar',"here's your avatar")
+                .setImage(AboutmeTarget.avatarURL)
+                .setTimestamp()
+
 
             writeLine(logDate + " About me "  + " || " + message.author.tag + " || " + message.guild.name)
             bot.channels.get(logsChannelID).send(logDate +  " About me " + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>`).catch(console.error)
             console.log(logDate + " About me"  + " || " + message.author.tag + " || " + message.guild.name)
 
-            message.channel.send(AboutEmbed);
+            if(!AboutmeTarget){
+                message.channel.send(AboutEmbed);
+            } else {message.channel.send(AboutNoEmbed)}
             break;
 
         case "delete":
@@ -113,6 +164,10 @@ bot.on('message', message => {
                 .addField( 'Deleted', Delamount)
                 .addField( 'Deleted by', message.author.tag)
                 .setTimestamp()
+            if(isNaN(Delamount)){
+                message.reply("thats not a number")
+                return;
+            }
             if(!Delamount)
             {
                 message.reply(`<amount>`);
@@ -137,18 +192,21 @@ bot.on('message', message => {
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
 
             const Spamamount = message.content.split(" ")[1];
-            if(!Spamamount)
-            {
-                message.reply(`<amount>`);
+            if (isNaN(Spamamount)) {
+                message.reply("that's not a number")
                 return;
-            }
-            if(!message.member.hasPermission("MANAGE_MESSAGES"))
-            {
-                message.channel.send('You have no permissions to do that');
-                return;
-            }
-            for(let a = 0; a < Spamamount ; a++) {
-                message.channel.send("spamming cause " + message.author.tag + " said it mad?")
+            }else {
+                if (!Spamamount) {
+                    message.reply(`<amount>`);
+                    return;
+                }
+                if (!message.member.hasPermission("MANAGE_MESSAGES")) {
+                    message.channel.send('You have no permissions to do that');
+                    return;
+                }
+                for (let a = 0; a < Spamamount; a++) {
+                    message.channel.send("spamming cause " + message.author.tag + " said it mad?")
+                }
             }
 
 
@@ -194,7 +252,6 @@ bot.on('message', message => {
             bot.channels.get(logsChannelID).send(logDate +  " Kicked "  + target.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + reason ).catch(console.error)
             console.log(logDate + " Kicked "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
             break;
-
 
         case "ban":
             Currentdate = new Date()
@@ -270,7 +327,7 @@ bot.on('message', message => {
         case "slowmode" :
             Currentdate = new Date()
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
-
+            const slowmodeChannel = message.mentions.channels.first()
             const Slowmodeamount = message.content.split(" ")[1];
 
             const SlowmodeEmbed = new RichEmbed()
@@ -283,15 +340,29 @@ bot.on('message', message => {
                 .setColor('#ff0000')
                 .addField( 'Can\'t change slowmode', 'u don\'t have permission to do that')
                 .setTimestamp()
-
+            if (isNaN(Slowmodeamount)){
+                message.reply("only numbers are allowed")
+                return;
+            }
             if (message.member.hasPermission("MANAGE_CHANNELS")) {
-                message.channel.setRateLimitPerUser(Slowmodeamount);
-                message.channel.send(SlowmodeEmbed);
 
-                writeLine(logDate + " Slowmode changed: "  + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
-                bot.channels.get(logsChannelID).send(logDate +  " Slowmode changed: "  + Slowmodeamount + "s"  + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || ").catch(console.error)
-                console.log(logDate + " Slowmode changed: "  + Slowmodeamount + "s" +  " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
+                if (!slowmodeChannel) {
+                    message.channel.setRateLimitPerUser(Slowmodeamount);
+                    message.channel.send(SlowmodeEmbed);
 
+                    writeLine(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
+                    bot.channels.get(logsChannelID).send(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || ").catch(console.error)
+                    console.log(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
+                } else{
+                    slowmodeChannel.setRateLimitPerUser(Slowmodeamount)
+                    message.channel.send(SlowmodeEmbed);
+                    slowmodeChannel.send(SlowmodeEmbed)
+
+                    writeLine(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + slowmodeChannel.name)
+                    bot.channels.get(logsChannelID).send(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${slowmodeChannel.id}>` + " || ").catch(console.error)
+                    console.log(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + slowmodeChannel.name)
+
+                }
             } else {
                 message.channel.send(NoSlowmodeEmbed)
             }
@@ -318,7 +389,7 @@ bot.on('message', message => {
             if (message.member.hasPermission("MANAGE_MESSAGES")) {
                 if (Warntarget) {
                     message.channel.send(WarnEmbed);
-                    message.author.send("you've been Warned in " + message.guild.name + ". Reason : " + Warnreason).catch(console.error)
+                    Warntarget.send("you've been Warned in " + message.guild.name + ". Reason : " + Warnreason).catch(console.error)
 
                     writeLine(logDate + " Warned: "  + Warntarget.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Warnreason)
                     bot.channels.get(logsChannelID).send(logDate +  " Warned: "  + Warntarget.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + Warnreason).catch(console.error)
@@ -333,9 +404,103 @@ bot.on('message', message => {
                 message.channel.send(NoWarnEmbed)
             }
             break;
+
+        case "mute":
+            Currentdate = new Date()
+            logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
+
+            const Mutemember = message.mentions.users.first()
+            const MuteTarget = message.guild.members.get(Mutemember.id)
+            const Mutereason = args.slice(2).join(' ');
+            const MuteEmbed = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Muted', Mutemember.tag)
+                .addField( 'Muted by', message.author.tag)
+                .setTimestamp()
+
+            const NoMuteEmbed= new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Can\' t Warn', 'u don\'t have permission to do that')
+                .setTimestamp()
+
+            if (message.member.hasPermission("MANAGE_MESSAGES")) {
+                if (Mutemember) {
+                    message.channel.send(MuteEmbed);
+
+                    MuteTarget.addRole(MuteRole);
+                    MuteTarget.send("you've been Muted in " + message.guild.name + ". Reason : " + Mutereason).catch(console.error)
+
+
+                    writeLine(logDate + " Muted: "  + Mutemember.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Mutereason)
+                    bot.channels.get(logsChannelID).send(logDate +  " Muted: "  + Mutemember.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + Mutereason).catch(console.error)
+                    console.log(logDate + " Muted: "  + Mutemember.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Mutereason)
+                    return;
+                }else {
+                    message.channel.send("you forgot to mention a user")
+                }
+
+
+            } else {
+                message.channel.send(NoMuteEmbed)
+            }
+            break;
     }}
 
 });
+bot.on('messageUpdate', (oldMessage, newMessage) => {
+    if (!newMessage.guild) return;
+    if (newMessage.author.bot){return;}
+    const Currentdate = new Date()
+    const logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
 
+    const logsChannel = newMessage.guild.channels.find(channel => channel.name === "logs");
+    const logsChannelID = logsChannel.id;
+    if (!newMessage.member.hasPermission("ADMINISTRATOR")) {
+        for (var i = 0; i < BadWords.length; i++) {
+            if (newMessage.content.includes(BadWords[i])) {
+
+                newMessage.delete()
+                newMessage.channel.send("that words is not acccepted")
+                bot.channels.get(logsChannelID).send(logDate + " message deleted: " + "`" + newMessage + "`" + " contained " + "`" + BadWords[i] + "`" + " in " + `<#${newMessage.channel.id}>`)
+                return;
+            }
+        }
+    }
+
+    if(newMessage.content != oldMessage){
+        const EditedEmbed= new RichEmbed()
+            .setColor('#0000ff')
+            .setTitle("Message Edited")
+            .addField( 'Old Content', "```" + ` ${oldMessage} `+"```", true )
+            .addField( 'New Content', "```" + ` ${newMessage} `+"```", true )
+            .addField("Channel", ` in <#${newMessage.channel.id}>`, true )
+            .addField("Message Link", newMessage.url)
+            .addField("Sent by" , `<@${newMessage.author.id}>`)
+            .setTimestamp()
+
+
+        bot.channels.get(logsChannelID).send(EditedEmbed).catch(console.error)
+
+    }
+});
+
+bot.on("messageDelete" , (messageDelete) => {
+
+    const logsChannel = messageDelete.guild.channels.find(channel => channel.name === "logs");
+    const logsChannelID = logsChannel.id;
+    if (!messageDelete.guild) return;
+    if (messageDelete.author.bot){return;}
+    const DeletedEmbed= new RichEmbed()
+        .setColor('#ff0000')
+        .setTitle("Message Deleted")
+        .addField( 'Message Content', "`" + ` ${messageDelete} `+"`", true )
+        .addField("Channel", ` in <#${messageDelete.channel.id}>`, true )
+        .addField("Sent by" , `<@${messageDelete.author.id}>`)
+        .setTimestamp()
+
+    bot.channels.get(logsChannelID).send(DeletedEmbed).catch(console.error)
+
+
+})
 
 bot.login(token);

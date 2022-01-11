@@ -1,5 +1,5 @@
 {
-  "token": "Your-Token-Here",
-  "prefix": "?",
-  "logsChannelID": "The channel that u want the logs to go in"
+  "token": "Token-here",
+  "prefix": "?"
+
 }
