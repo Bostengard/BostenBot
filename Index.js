@@ -21,9 +21,11 @@ var writeLine = (line) => logger.write(`\n${line}`);
 bot.on('ready', () => {
 
 
+
     var ReadyDate = moment(date).format('DD MM YYYY hh:mm:ss')
     console.log(`Logged in as ${bot.user.tag}!`);
     writeLine(ReadyDate +` Logged in as ${bot.user.tag}!`)
+
 });
 
 
@@ -61,6 +63,7 @@ bot.on('message', message => {
             }
         }
     }
+
 
 
 
@@ -403,7 +406,14 @@ bot.on('message', message => {
             }
             break;
 
+        case "servercount":
 
+            message.channel.send(`Currently in ${bot.guilds.size} servers`)
+            break;
+
+        case "membercount":
+            var memberCount = message.guild.members.filter(member => !member.user.bot).size;
+            message.channel.send(`${message.guild.name} has ${memberCount} members!`);
     }}
 
 });
