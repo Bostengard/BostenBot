@@ -1,4 +1,4 @@
-# LordBostengardModerationBot
+# AutoModBot
 
 ##### Lord Bostengard Moderation Bot is a bot made for discord servers that need a simple but usefull bot to help with the moderation tasks
 
