@@ -62,7 +62,6 @@ bot.on('message', message => {
         }
     }
 
-    const MuteRole = message.guild.roles.find(role => role.name === "Mute");
 
 
     if(message.content.includes(config.prefix)){
@@ -84,7 +83,6 @@ bot.on('message', message => {
                 .addField( 'kick', "Kicks a member and sends a dm to the mentioned user `?kick < mention > < reason >`")
                 .addField( 'softban', "Bans and unbans a member and sends a dm to the mentioned user `?softban < mention > < reason >`")
                 .addField( 'ban', "Bans a member and sends a dm to the mentioned user `?ban < mention > < reason >`")
-                .addField("mute", "mutes a user ands sends a dm to the mentioned user (to works need a special permissions channel with the 'Muted' with the send messages permissions to off `?mute < mention > < reason >`")
                 .addField( 'Slowmode', "Changes the slowmode in a channel `?slowmode < #channel > < reason >`")
                 .setTimestamp()
 
@@ -405,45 +403,7 @@ bot.on('message', message => {
             }
             break;
 
-        case "mute":
-            Currentdate = new Date()
-            logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
 
-            const Mutemember = message.mentions.users.first()
-            const MuteTarget = message.guild.members.get(Mutemember.id)
-            const Mutereason = args.slice(2).join(' ');
-            const MuteEmbed = new RichEmbed()
-                .setColor('#ff0000')
-                .addField( 'Muted', Mutemember.tag)
-                .addField( 'Muted by', message.author.tag)
-                .setTimestamp()
-
-            const NoMuteEmbed= new RichEmbed()
-                .setColor('#ff0000')
-                .addField( 'Can\' t Warn', 'u don\'t have permission to do that')
-                .setTimestamp()
-
-            if (message.member.hasPermission("MANAGE_MESSAGES")) {
-                if (Mutemember) {
-                    message.channel.send(MuteEmbed);
-
-                    MuteTarget.addRole(MuteRole);
-                    MuteTarget.send("you've been Muted in " + message.guild.name + ". Reason : " + Mutereason).catch(console.error)
-
-
-                    writeLine(logDate + " Muted: "  + Mutemember.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Mutereason)
-                    bot.channels.get(logsChannelID).send(logDate +  " Muted: "  + Mutemember.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + Mutereason).catch(console.error)
-                    console.log(logDate + " Muted: "  + Mutemember.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Mutereason)
-                    return;
-                }else {
-                    message.channel.send("you forgot to mention a user")
-                }
-
-
-            } else {
-                message.channel.send(NoMuteEmbed)
-            }
-            break;
     }}
 
 });
