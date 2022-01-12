@@ -47,18 +47,26 @@ bot.on('message', message => {
     var Currentdate = new Date()
     var logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
 
-    const logsChannel = message.guild.channels.find(channel => channel.name.includes("logs"));
-    const logsChannelID = logsChannel.id;
 
     if (message.author.bot){return;}
+
+    const logsChannel = message.guild.channels.find(channel => channel.name.includes("logs"));
+    const logsChannelID = logsChannel.id;
 
     if (!message.member.hasPermission("ADMINISTRATOR")) {
         for (var i = 0; i < BadWords.length; i++) {
             if (message.content.includes(BadWords[i])) {
 
+                const BadWordEmbedLog = new RichEmbed()
+                    .setColor('#ff0000')
+                    .addField( 'Message deleted', "`" + message.content + "`",true)
+                    .addField( 'Sent by', `<#${message.author.id}>`,true)
+                    .addField("Reason" , "bad word filter")
+                    .setTimestamp()
+
                 message.delete()
-                message.channel.send("that words is not acccepted")
-                bot.channels.get(logsChannelID).send(logDate + " message deleted: " + "`" + message + "`" + " contained " + "`" + BadWords[i] + "`" + " in " + `<#${message.channel.id}>`)
+                message.channel.send("that words is not accepted")
+                bot.channels.get(logsChannelID).send(BadWordEmbedLog)
                 return;
             }
         }
@@ -76,6 +84,15 @@ bot.on('message', message => {
             Currentdate = new Date()
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
 
+            const HelpEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
+
+
             const HelpEmbed = new RichEmbed()
                 .setColor('#38F20A')
                 .setTitle("Lord Bostengard's Commands")
@@ -86,12 +103,12 @@ bot.on('message', message => {
                 .addField( 'kick', "Kicks a member and sends a dm to the mentioned user `?kick < mention > < reason >`")
                 .addField( 'softban', "Bans and unbans a member and sends a dm to the mentioned user `?softban < mention > < reason >`")
                 .addField( 'ban', "Bans a member and sends a dm to the mentioned user `?ban < mention > < reason >`")
-                .addField( 'Slowmode', "Changes the slowmode in a channel `?slowmode < #channel > < reason >`")
+                .addField( 'Slowmode', "Changes the slowmode in a channel `?slowmode < amount > < channel >`")
                 .setTimestamp()
 
             message.channel.send(HelpEmbed).catch(console.error)
             writeLine(logDate + " Helping " + "||" + message.author.tag + "||" + message.guild.name)
-            bot.channels.get(logsChannelID).send(logDate +  " Helping " + " | " + message.author.tag + " | " + message.guild.name + `<#${message.channel.id}>`).catch(console.error)
+            bot.channels.get(logsChannelID).send(HelpEmbedLog).catch(console.error)
             console.log(logDate + " Helping " + "||" + message.author.tag + "||" + message.guild.name)
             break;
 
@@ -101,6 +118,18 @@ bot.on('message', message => {
 
             const amount = message.content.split(" ")[1];
             const Number = Math.floor(Math.random() * amount)
+
+
+            const RandomEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField("Result", Number,true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
+
+
 
             const RandomNumberEmbed = new RichEmbed()
                 .setColor('#38F20A')
@@ -113,7 +142,7 @@ bot.on('message', message => {
             }else{
                 message.channel.send(RandomNumberEmbed);
                 writeLine(logDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
-                bot.channels.get(logsChannelID).send(logDate +  " Random " + amount +  " | " + message.author.tag + " | " + message.guild.name + `<#${message.channel.id}>`).catch(console.error)
+                bot.channels.get(logsChannelID).send(RandomEmbedLog).catch(console.error)
                 console.log(logDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
             }
 
@@ -123,7 +152,16 @@ bot.on('message', message => {
             Currentdate = new Date()
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
             const AboutmeTarget = message.mentions.users.first()
+            if (!AboutmeTarget){
+                const AboutmeTarget = message.author}
             const HighestRole = message.member.highestRole.id
+            const AboutMeEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
 
             const AboutEmbed = new RichEmbed()
                 .setColor('#38F20A')
@@ -146,7 +184,7 @@ bot.on('message', message => {
 
 
             writeLine(logDate + " About me "  + " || " + message.author.tag + " || " + message.guild.name)
-            bot.channels.get(logsChannelID).send(logDate +  " About me " + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>`).catch(console.error)
+            bot.channels.get(logsChannelID).send(AboutMeEmbedLog).catch(console.error)
             console.log(logDate + " About me"  + " || " + message.author.tag + " || " + message.guild.name)
 
             if(!AboutmeTarget){
@@ -159,6 +197,14 @@ bot.on('message', message => {
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
 
             const Delamount = message.content.split(" ")[1];
+            const DeleteEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
+
 
             const DeleteEmbed = new RichEmbed()
                 .setColor('#19ff00')
@@ -183,7 +229,7 @@ bot.on('message', message => {
             message.channel.bulkDelete(Delamount)
             message.channel.send(DeleteEmbed)
             writeLine(logDate + " Deleted "  + Delamount + " || " + message.author.tag + " || " + message.guild.name)
-            bot.channels.get(logsChannelID).send(logDate +  " Deleted " + Delamount +  " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>`).catch(console.error)
+            bot.channels.get(logsChannelID).send(DeleteEmbedLog).catch(console.error)
             console.log(logDate + " Deleted "  + Delamount +  " || " + message.author.tag + " || " + message.guild.name)
 
             break;
@@ -191,6 +237,13 @@ bot.on('message', message => {
         case "spam":
             Currentdate = new Date()
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
+            const SpamEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
 
             const Spamamount = message.content.split(" ")[1];
             if (isNaN(Spamamount)) {
@@ -212,7 +265,7 @@ bot.on('message', message => {
 
 
             writeLine(logDate + " Spammed "  + Spamamount + " || " + message.author.tag + " || " + message.guild.name)
-            bot.channels.get(logsChannelID).send(logDate +  " Spammed " + Spamamount +  " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>`).catch(console.error)
+            bot.channels.get(logsChannelID).send(SpamEmbedLog).catch(console.error)
             console.log(logDate + " Spammed "  + Spamamount +  " || " + message.author.tag + " || " + message.guild.name)
 
             break;
@@ -230,6 +283,16 @@ bot.on('message', message => {
                 .addField( 'Kicked', target.tag)
                 .addField( 'Kicked by', message.author.tag)
                 .setTimestamp()
+
+            const KickEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Kicked', target.tag,true)
+                .addField( 'Kicked by', `<#${message.author.id}>`,true)
+                .addField( 'Kicked In', `<#${message.channel.id}>`,true)
+                .addField("Reason" , reason)
+                .addField("Message", "`" + message.url + "´")
+                .setTimestamp()
+
 
             const NoKickEmbed= new RichEmbed()
                 .setColor('#ff0000')
@@ -250,7 +313,7 @@ bot.on('message', message => {
             }
 
             writeLine(logDate + " Kicked "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + reason )
-            bot.channels.get(logsChannelID).send(logDate +  " Kicked "  + target.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + reason ).catch(console.error)
+            bot.channels.get(logsChannelID).send(KickEmbedLog ).catch(console.error)
             console.log(logDate + " Kicked "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
             break;
 
@@ -260,6 +323,14 @@ bot.on('message', message => {
 
             const Bantarget = message.mentions.users.first();
             const Banreason = args.slice(2).join(' ');
+            const BanEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Banned', Bantarget.tag,true)
+                .addField( 'Banned by', `<@${message.author.id}>`,true)
+                .addField('Banned In', `<#${message.channel.id}>`,true)
+                .addField("Reason" , Banreason)
+                .addField("Message", "`" + message.url + "´")
+                .setTimestamp()
 
             const BanEmbed = new RichEmbed()
                 .setColor('#ff0000')
@@ -280,7 +351,7 @@ bot.on('message', message => {
                     message.channel.send(BanEmbed);
 
                     writeLine(logDate + " Banned "  + Bantarget.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + Banreason )
-                    bot.channels.get(logsChannelID).send(logDate +  " Banned "  + Bantarget.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + Banreason ).catch(console.error)
+                    bot.channels.get(logsChannelID).send(BanEmbedLog).catch(console.error)
                     console.log(logDate + " Banned "  + Bantarget.tag +  " || " + message.author.tag + " || " + message.guild.name + Banreason )
 
                 } else {
@@ -294,6 +365,14 @@ bot.on('message', message => {
         case "softban":
             const SoftBantarget = message.mentions.users.first();
             const SoftBanreason = args.slice(2).join(' ');
+            const SoftBanEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'SoftBanned', SoftBantarget.tag,true)
+                .addField( 'SoftBanned by', `<@${message.author.id}>`,true)
+                .addField('Softbanned in', `<#${message.channel.id}>`,true)
+                .addField("Reason" ,SoftBanreason)
+                .addField("Message", "`" + message.url + "´")
+                .setTimestamp()
 
             const SoftBanEmbed = new RichEmbed()
                 .setColor('#ff0000')
@@ -315,7 +394,7 @@ bot.on('message', message => {
                     message.channel.send(SoftBanEmbed);
 
                     writeLine(logDate + " SoftBanned "  + SoftBantarget.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + SoftBanreason )
-                    bot.channels.get(logsChannelID).send(logDate +  " SoftBanned "  + SoftBantarget.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + SoftBanreason ).catch(console.error)
+                    bot.channels.get(logsChannelID).send(SoftBanEmbedLog).catch(console.error)
                     console.log(logDate + " SoftBanned "  + SoftBantarget.tag +  " || " + message.author.tag + " || " + message.guild.name + SoftBanreason )
 
                 } else {
@@ -330,6 +409,14 @@ bot.on('message', message => {
             logDate = moment(Currentdate).format('DD MM YYYY hh:mm:ss')
             const slowmodeChannel = message.mentions.channels.first()
             const Slowmodeamount = message.content.split(" ")[1];
+            const SlowModeEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel Sent" ,`<#${message.channel.id}>`,true)
+                .addField('Affected Channel', `<#${slowmodeChannel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
 
             const SlowmodeEmbed = new RichEmbed()
                 .setColor('#06ff00')
@@ -352,7 +439,7 @@ bot.on('message', message => {
                     message.channel.send(SlowmodeEmbed);
 
                     writeLine(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
-                    bot.channels.get(logsChannelID).send(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || ").catch(console.error)
+                    bot.channels.get(logsChannelID).send(SlowModeEmbedLog).catch(console.error)
                     console.log(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
                 } else{
                     slowmodeChannel.setRateLimitPerUser(Slowmodeamount)
@@ -360,7 +447,7 @@ bot.on('message', message => {
                     slowmodeChannel.send(SlowmodeEmbed)
 
                     writeLine(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + slowmodeChannel.name)
-                    bot.channels.get(logsChannelID).send(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${slowmodeChannel.id}>` + " || ").catch(console.error)
+                    bot.channels.get(logsChannelID).send(SlowModeEmbedLog).catch(console.error)
                     console.log(logDate + " Slowmode changed: " + Slowmodeamount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + slowmodeChannel.name)
 
                 }
@@ -375,6 +462,14 @@ bot.on('message', message => {
 
             const Warntarget = message.mentions.users.first();
             const Warnreason = args.slice(2).join(' ');
+            const WarnEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Warned', target.tag,true)
+                .addField( 'Warned by', `<#${message.author.id}>`,true)
+                .addField('Warned in', `<#${message.channel.id}>`)
+                .addField("Reason" , Warnreason)
+                .addField("Message", "`" + message.url + "´")
+                .setTimestamp()
 
             const WarnEmbed = new RichEmbed()
                 .setColor('#ff0000')
@@ -393,9 +488,9 @@ bot.on('message', message => {
                     Warntarget.send("you've been Warned in " + message.guild.name + ". Reason : " + Warnreason).catch(console.error)
 
                     writeLine(logDate + " Warned: "  + Warntarget.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Warnreason)
-                    bot.channels.get(logsChannelID).send(logDate +  " Warned: "  + Warntarget.tag + " | " + message.author.tag + " | " + message.guild.name + " | " + `<#${message.channel.id}>` + " || " + Warnreason).catch(console.error)
+                    bot.channels.get(logsChannelID).send(WarnEmbedLog).catch(console.error)
                     console.log(logDate + " Warned: "  + Warntarget.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + Warnreason)
-
+                    return;
                 }else {
                     message.channel.send("you forgot to mention a user")
                 }
@@ -407,13 +502,30 @@ bot.on('message', message => {
             break;
 
         case "servercount":
-
+            const SCEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
+            bot.channels.get(logsChannelID).send(SCEmbedLog).catch(console.error)
             message.channel.send(`Currently in ${bot.guilds.size} servers`)
             break;
 
         case "membercount":
             var memberCount = message.guild.members.filter(member => !member.user.bot).size;
+            const MCEmbedLog = new RichEmbed()
+                .setColor('#ff0000')
+                .addField( 'Command', "`" + message.content + "`",true)
+                .addField( 'Sent by', `<@${message.author.id}>`,true)
+                .addField("Channel" ,`<#${message.channel.id}>`,true)
+                .addField("Message",  message.url )
+                .setTimestamp()
+
+            bot.channels.get(logsChannelID).send(MCEmbedLog).catch(console.error)
             message.channel.send(`${message.guild.name} has ${memberCount} members!`);
+
     }}
 
 });
