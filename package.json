@@ -1,9 +1,11 @@
 {
   "dependencies": {
+    "@mapbox/node-pre-gyp": "^1.0.8",
     "discord.js.old": "^11.6.5",
     "ffmpeg": "^0.0.4",
     "moment": "^2.29.1",
     "opusscript": "^0.0.6",
+    "sqlite3": "^4.2.0",
     "ytdl-core": "^4.9.2"
   }
 }
