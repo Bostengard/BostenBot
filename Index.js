@@ -531,24 +531,6 @@ bot.on("messageDelete" , (messageDelete) => {
 
 
 })
-bot.on("guildMemberAdd", (member) =>{
-
-    //get the channel to send theembed
-    const logsChannel = member.guild.channels.find(channel => channel.name.includes("logs"));
-    const logsChannelID = logsChannel.id;
-    //get the info and put it in the embed
-    const guildMemberAddEmbed = new RichEmbed()
-        .setColor('#000fff')
-        .setTitle('New Member')
-        .setTitle('A new user has joined the server')
-        .addField('Name', "`" + member + "`" ,true)
-        .addField('ID', "`" + member.id + "`" ,true)
-        .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
-        .setThumbnail(member.avatarURL)
-
-    member.guild.channels.get(logsChannelID).send(guildMemberAddEmbed)
-
-})
 bot.login(token)
 
 
