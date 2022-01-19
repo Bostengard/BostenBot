@@ -6,6 +6,8 @@ const moment = require('moment');
 const sqlite = require('sqlite3').verbose();
 const fs = require('fs')
 const {RichEmbed} = require('discord.js.old')
+const { reddit } = require('@kindl3d/reddit.js');
+
 
 //global variables
 const bot = new Discord.Client();
@@ -17,6 +19,7 @@ let target = ""
 let targetID = ""
 let amount = ""
 let cases = ""
+let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
 
 
 //WHEN BOT IS READY LOG A MESSAGE IN CONSOLE AND IN .TXT LOGS
@@ -89,21 +92,39 @@ bot.on('message', message =>{
         switch (args[0]){
 
             //if its help
+            case "help-moderation":
+                //define help embed
+                const HelpmodEmbed = new RichEmbed()
+                    .setColor('#38F20A')
+                    .setTitle("Lord Bostengard's Commands")
+                    .setDescription("prefix = ?")
+                    .addField( ' :blue_circle: delete', "deletes a custom amount(max 99) of messages in a channel `?delete < quantity >`")
+                    .addField( ' :blue_circle: Spam', "Sends a custom amount of messages in a channel (its slow) `?spam< quantity >`")
+                    .addField( ' :blue_circle:  warn', "Warns a member and sends a dm to the user`?warn < mention >< reason >`")
+                    .addField( ':blue_circle:  kick', "Kicks a member and sends a dm to the user `?kick < mention >< reason >`")
+                    .addField( ':blue_circle:  ban', "Bans a member and sends a dm to the mentioned user `?ban < mention><reason>`")
+                    .addField( ':blue_circle:  slowmode', "Changes the slowmode in a channel `?slowmode < amount >< channel >`")
+                    .addField( ':blue_circle: cases', "shows the cases for a person and their type`?cases < mention >`")
+                    .setTimestamp()
+
+                //send message and log everything
+                message.channel.send(HelpmodEmbed)
+                WriteLine(FileLogDate + "Help mod " + " || " +  message.author.tag + " || " + message.guild.name)
+                bot.channels.get(logsChannelID).send(LogEmbed)
+                console.log(FileLogDate + " Helping mods " + "||" + message.author.tag + "||" + message.guild.name)
+                break;
+
             case "help":
                 //define help embed
                 const HelpEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
                     .setDescription("prefix = ?")
-                    .addField( 'aboutme', "Shows a full-of-info embed of yourself or in case of mentioning someone of that person `?aboutme < mention >`")
-                    .addField( 'delete', "deletes a custom amount(max 100) of messages in a channel `?delete < quantity >`")
-                    .addField( 'Spam', "Sends a custom amount of messages in a channel (its slow) `?spam < quantity >`")
-                    .addField( 'warn', "Warns a member and sends a dm to the mentioned user `?warn < mention > < reason >`")
-                    .addField( 'kick', "Kicks a member and sends a dm to the mentioned user `?kick < mention > < reason >`")
-                    .addField( 'ban', "Bans a member and sends a dm to the mentioned user `?ban < mention > < reason >`")
-                    .addField( 'slowmode', "Changes the slowmode in a channel `?slowmode < amount > < channel >`")
-                    .addField( 'cases', "shows the cases for a person and their type")
-                    .addField('leaderboard', 'shows the top 3 users for this server (message count)')
+                    .addField( ' :blue_circle: aboutme', "Shows a full-of-info embed of yourself or in case of mentioning someone of that person `?aboutme < mention >`")
+                    .addField(':blue_circle: leaderboard', 'shows the top 3 users for this server `?leaderboard`')
+                    .addField(':blue_circle: Server Info', 'shows the info of the current server `?serverinfo`')
+                    .addField(':blue_circle: Role Info', 'shows info of the role mentioned `?roleinfo < ID >`')
+                    .addField(':blue_circle: Reddit', 'seaches a reddit post (if random selects a random meme) \n`?reddit < subreddit/random > <hot/top/new/rising>`')
                     .setTimestamp()
 
                 //send message and log everything
@@ -112,7 +133,6 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
-
             case "random":
                 //get the amount and get the random number and check if its an actual number
                 amount = message.content.split(" ")[1];
@@ -122,7 +142,7 @@ bot.on('message', message =>{
                 //define the embed
                 const RandomNumberEmbed = new RichEmbed()
                     .setColor('#38F20A')
-                    .setTitle("RANDOM NUMBER")
+                    .setTitle(":blue_circle: RANDOM NUMBER")
                     .addField('Your Random Number is :', number)
                     .setTimestamp()
 
@@ -133,7 +153,6 @@ bot.on('message', message =>{
                 console.log(FileLogDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
                 break;
 
-
             case "aboutme":
 
 
@@ -141,10 +160,9 @@ bot.on('message', message =>{
                 const AboutEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("User Info")
-                    .addField( 'Created', moment(message.author.createdAt).format("YYYY MM DD"))
-                    .addField( 'User ID', message.author.id,true)
-                    .addField('Highest Role', `<@&${message.author.highestRole}>`,true)
-                    .addField( 'Avatar',"here's your avatar")
+                    .addField( ' :blue_circle:Created', moment(message.author.createdAt).format("YYYY MM DD"))
+                    .addField( ' :blue_circle: User ID', message.author.id,true)
+                    .addField(':blue_circle: Highest Role', "`" + message.member.highestRole.name+ "`",true)
                     .setThumbnail(message.author.avatarURL)
                     .setTimestamp()
 
@@ -196,25 +214,24 @@ bot.on('message', message =>{
                 }
                 break;
 
-
             case "kick":
 
                 //get targets info and check unviable option
                 target = message.mentions.users.first();
                 if(!target){message.channel.send("specify a user to kick"); return;}
-                targetID = target.toString().replace(/[\\<>@#&!]/g, "")
-                reason = args.slice(2).join()
+                targetID = target.toString().replace(/[\\<>@#&!]/g , " ")
+                reason = args.slice(2).join(' ')
                 if(!reason){message.channel.send("specify a reason"); return;}
 
                 //check permissions
-                if(!message.member.hasPermission("KICK_MEMBERS")){message.channel.send("u cant kick people")}
+                if(!message.member.hasPermission("KICK_MEMBERS")){message.channel.send("u cant kick people") ; return;}
 
                 //define the embed
                 const KickEmbed = new RichEmbed()
                     .setColor('#ff0000')
-                    .addField( 'Kicked', target.tag,true)
-                    .addField('Reason', '`'+ reason + '`',true)
-                    .addField( 'Kicked by', message.author.tag)
+                    .addField( ':blue_circle: Kicked', target.tag,true)
+                    .addField(':blue_circle: Reason', '`'+ reason + '`',true)
+                    .addField( ':blue_circle: Kicked by', message.author.tag)
                     .setTimestamp()
 
                 //det cases nº data and update id from database
@@ -248,8 +265,7 @@ bot.on('message', message =>{
                         insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "kick")
                     }
                 })
-               break;
-
+                break;
 
             case "ban":
 
@@ -264,9 +280,9 @@ bot.on('message', message =>{
                 //setup the embed
                 const BanEmbed = new RichEmbed()
                     .setColor('#ff0000')
-                    .addField( 'Banned', target.tag,true)
-                    .addField('Reason', reason,true)
-                    .addField( 'Banned by', message.author.tag)
+                    .addField( ':blue_circle: Banned', target.tag,true)
+                    .addField(':blue_circle: Reason', reason,true)
+                    .addField( ':blue_circle: Banned by', message.author.tag)
                     .setTimestamp()
 
                 //get data from data table
@@ -312,8 +328,8 @@ bot.on('message', message =>{
                 //embed setup
                 const SlowmodeEmbed = new RichEmbed()
                     .setColor('#06ff00')
-                    .addField( 'Slowmode changed to', amount + "s")
-                    .addField( 'Changed by', message.author.tag)
+                    .addField( ':blue_circle: Slowmode changed to', amount + "s")
+                    .addField( ':blue_circle: Changed by', message.author.tag)
                     .setTimestamp()
 
                 //set slowmode and send message
@@ -330,7 +346,7 @@ bot.on('message', message =>{
 
                 //get target info
                 target = message.mentions.users.first()
-                if(!target){message.channel.send("specify a target"); return;}
+                if(!target){message.channel.send("mention a user");return;}
                 targetID = target.toString().replace(/[\\<>@#&!]/g, "")
                 reason = args.slice(2).join(' ');
                 if(!reason){message.channel.send("specify a reason");return;}
@@ -338,9 +354,9 @@ bot.on('message', message =>{
                 //setup the embed
                 const WarnEmbed = new RichEmbed()
                     .setColor('#ff0000')
-                    .addField( 'Warn', target.tag)
-                    .addField('Reason', reason,true)
-                    .addField('Warned By', message.author.tag , true)
+                    .addField( ':blue_circle: Warn', target.tag)
+                    .addField(':blue_circle: Reason', reason,true)
+                    .addField(':blue_circle: Warned By', message.author.tag , true)
                     .setTimestamp()
 
 
@@ -387,10 +403,10 @@ bot.on('message', message =>{
                     .setTitle("Server Info")
                     .setDescription(`showing info for ${message.guild.name}`)
                     .setThumbnail(message.guild.iconURL)
-                    .addField("Total members", membercount ,true)
-                    .addField("Online members", onlinemembercount, true)
-                    .addField("Owner" , `<@${message.guild.ownerID}>`,true)
-                    .addField("Server Banner ", `this is the server banner for ${message.guild.name} `)
+                    .addField(":blue_circle: Total members", membercount ,true)
+                    .addField(":blue_circle: Online members", onlinemembercount, true)
+                    .addField(":blue_circle: Owner" , `<@${message.guild.ownerID}>`,true)
+                    .addField(":blue_circle: Server Banner ", `this is the server banner for ${message.guild.name} `)
                     .setImage(message.guild.bannerURL)
 
                 //send and log
@@ -399,12 +415,19 @@ bot.on('message', message =>{
                 break;
 
             case "cases":
+                amount = 1
                 //check unviable options and format target
                 if(!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
                 target = message.mentions.users.first();
                 if(!target){message.channel.send("Specify a user")}
                 target = target.toString().replace(/[\\<>@#&!]/g, "")
 
+
+                //set primary embed
+                const CasesEmbedRows = new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle(`This are the cases for ${message.mentions.users.first().tag}`)
+                    .setThumbnail(targetID.avatarURL)
                 //get info and send it
                 db.all(casesquery, [target], (err, row) =>{
                     if(err){console.log(err);message.channel.send("error getting data"); return;}
@@ -414,75 +437,139 @@ bot.on('message', message =>{
                         let moderator = rows.ModeratorTag
                         let type = rows.CaseType
 
-                        const CasesEmbedRows = new RichEmbed()
-                            .setColor('#000fff')
-                            .addField("Type", "`" + type + "`",true)
-                            .addField("Reason", "`" + reasonC + "`",true)
-                            .addField("Moderator", `${moderator}`,true)
 
+                        CasesEmbedRows.addField(`:blue_circle: ${amount}: ${type}`,`Reason:  `+"`  " +reasonC+"  `" +"  By:   `  " + moderator + "  `")
                         amount++
-                        message.channel.send(CasesEmbedRows)
+
                     })
 
-                    const TotalCases = new RichEmbed()
-                        .setColor('#000fff')
-                        .setTitle(`this user has a total of ${amount} cases`)
-
-                    message.channel.send(TotalCases)
+                    message.channel.send(CasesEmbedRows)
 
                 })
                 break;
 
             case "leaderboard":
+                //get the embed
+                const leaderboardEmbed= new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle(":blue_circle: Leaderboard!")
+                    .setDescription(`This is the top 3 users for ${message.guild.name}`)
+                    .setImage(message.guild.avatarURL)
+
+
+
                 //get info
-                amount = "1"
-                db.all(leaderboardquery, (err, row) =>{
-                    if(err){console.log(err);message.channel.send("error getting data"); return;}
-
-                    const TotalCases = new RichEmbed()
-                        .setColor('#000fff')
-                        .setTitle(`Leaderboard!`)
-                        .setDescription(`This are the top  users of ${message.guild.name}`)
-                        .setThumbnail(message.guild.iconURL)
-
-                    message.channel.send(TotalCases)
-                    //setup an embed for each person and send it
-                    row.forEach( function (rows){
-
-                        let messageCount = rows.Messages
-                        let User = rows.UserTag
-
-                        const leaderboardEmbed= new RichEmbed()
-                            .setColor('#000fff')
-                            .addField(`Top ${amount}`, `${User} with ${messageCount} messages`)
-
-                        amount++
-                        message.channel.send(leaderboardEmbed)
-                    })
-
-                })
-                //get info of your message count and setit up in an embed
-
                 db.get(dataquery,[message.author.id], (err, row) =>{
                     if (err) {console.log(err);return;}
                     if (row === undefined) {
                         message.channel.send("Error getting your messages"); return;
                     } else {
                         const messageN = row.Messages
-                        const messagecountLeaderboard = new RichEmbed()
-                            .setColor('#000fff')
-                            .setTitle('Your messages')
-                            .setDescription(`you have a total of ${messageN} messages`)
+                        leaderboardEmbed.addField(":blue_circle: your messages",`you have a total of ${messageN} messages in this server`)
 
-                        message.channel.send(messagecountLeaderboard)
+
                     }
 
+                })
+                amount = "1"
+
+                db.all(leaderboardquery, (err, row) =>{
+                    if(err){console.log(err);message.channel.send("error getting data"); return;}
+
+                    //setup an embed for each person and send it
+
+                    row.forEach( function (rows){
+
+                        //add a field for every person
+                        let messageCount = rows.Messages
+                        let User = rows.UserTag
+
+                        leaderboardEmbed.addField(`:blue_circle: Top ${amount}`, `${User} with ${messageCount} messages`)
+
+                        amount++
+
+                    })
+                    //send the message
+
+                    message.channel.send(leaderboardEmbed)
                 })
 
                 break;
 
-        }
+            case "roleinfo":
+                //get the role id to input
+                target = message.content.split(" ")[1]
 
+                //get the role mention
+                const TargetRole = message.guild.roles.find( role => role.id == target)
+
+                //get the embed with the info
+                const RoleEmbed = new RichEmbed()
+                    .setColor(TargetRole.hexColor)
+                    .setTitle(`Showing role info for : `+ "`" + TargetRole.name + "`")
+                    .addField(':blue_circle: Created At', `Role created at ${moment(TargetRole.createdAt).format("DD:MM:YYYY")}`)
+                    .addField(':blue_circle: Mentionable', "`" + TargetRole.mentionable + "`", true)
+                    .addField(':blue_circle: ID', "`" + target + "`")
+                    .addField(":blue_circle: Color", "`" + TargetRole.hexColor + "`")
+                    .addField(":blue_circle: Mebers", "At least " + "`"+ TargetRole.members.size+"`")
+
+
+                //send the embed
+                message.channel.send(RoleEmbed)
+
+                break;
+
+            case "reddit":
+
+
+                //get the subreddit
+                target = message.content.split(" ")[1]
+                amount = message.content.split(" ")[2]
+
+                //get the post with all the data
+                if(target == "random"){
+                    const redditamount = Math.floor(Math.random() * subreddits.length)
+                    target = subreddits[redditamount]
+                }
+
+                if(!amount){
+                    amount = "hot"
+                }
+                reddit(target, amount).then(data =>{
+                    console.log(data)
+                    //if nsfw and the channel is not nsfw dont send anything
+                    if(data.nsfw === true && !message.channel.nsfw){
+                            message.channel.send("no nsfw posts are allowed in this channel")
+                            return;
+
+                    }
+                    if(!data.url.endsWith(".jpg") && !data.url.endsWith(".gif") && !data.url.endsWith(".png") && !data.url.endsWith(".webp")){
+                        const redditembed = new RichEmbed ()
+                            .setColor('#ff7b00')
+                            .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
+
+                            .setDescription(`[Reddit Post](${data.permalink})` + ` || from ${data.subreddit}`)
+                        message.channel.send(redditembed)
+                        message.channel.send(data.url)
+                        return;
+
+                    }
+
+                    //define the embed for the post
+                    const redditembed = new RichEmbed ()
+                        .setColor('#ff7b00')
+                        .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
+                        .setImage(data.url)
+                        .setDescription(`[Reddit Post](${data.permalink})` + ` | from ${data.subreddit}  | by u/${data.author}`)
+
+                    message.channel.send(redditembed)
+                })
+
+                break;
+
+
+
+        }
     }
 
 })
@@ -495,7 +582,7 @@ bot.on('messageUpdate', (oldMessage, newMessage) => {
     const logsChannel = newMessage.guild.channels.find(channel => channel.name === "logs");
     if(!logsChannel){return;}
     const logsChannelID = logsChannel.id;
-   //send embed with info
+    //send embed with info
     if(newMessage.content != oldMessage){
         const EditedEmbed= new RichEmbed()
             .setColor('#0000ff')
@@ -536,12 +623,13 @@ bot.on("guildMemberAdd", (member) =>{
     //get the channel to send theembed
     const logsChannel = member.guild.channels.find(channel => channel.name.includes("logs"));
     const logsChannelID = logsChannel.id;
+
     //get the info and put it in the embed
     const guildMemberAddEmbed = new RichEmbed()
         .setColor('#000fff')
         .setTitle('New Member')
         .setTitle('A new user has joined the server')
-        .addField('Name', "`" + member + "`" ,true)
+        .addField('Name', "`" + member.name + "`" ,true)
         .addField('ID', "`" + member.id + "`" ,true)
         .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
         .setThumbnail(member.avatarURL)

@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@kindl3d/reddit.js": "^1.2.4",
     "@mapbox/node-pre-gyp": "^1.0.8",
     "discord.js.old": "^11.6.5",
     "ffmpeg": "^0.0.4",
