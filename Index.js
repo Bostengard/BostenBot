@@ -19,6 +19,7 @@ let target = ""
 let targetID = ""
 let amount = ""
 let cases = ""
+let Bostengard = "https://bostengard.github.io/"
 let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
 
 
@@ -35,7 +36,7 @@ bot.on('message', message =>{
 
     //if the message is send by a bot dont do anything
     if (message.author.bot){return;}
-    if(message.guild === null){message.channel.send("this bot doesnt accept DMs"); return;}
+    if(message.guild === null){return;}
 
     //update the date
     FileLogDate = moment(new Date()).format("DD MM YYYY hh:mm:ss")
@@ -51,6 +52,7 @@ bot.on('message', message =>{
     let dataquery = `SELECT * FROM data WHERE UserId = ?`;
     let casesquery = `SELECT * FROM cases WHERE UserId = ?`;
     let leaderboardquery = `SELECT * FROM data ORDER BY Messages DESC LIMIT 3`
+
 
     //update the message count of the user  Get the row, the message count +1 and update it (sort by message author id)
     db.get(dataquery,[message.author.id], (err, row) =>{
@@ -91,6 +93,28 @@ bot.on('message', message =>{
 
         switch (args[0]){
 
+
+
+            case "help":
+                const HelpEmbed = new RichEmbed()
+                    .setColor('#38F20A')
+                    .setTitle("Lord Bostengard's Lobby")
+                    .setURL(Bostengard)
+                    .setDescription("prefix = ?")
+                    .addField( ' :blue_circle: User', "User Command `?help-user`",true)
+                    .addField( ' :blue_circle: Mods', "Moderator Commands `?help-moderation`",true)
+                    .setThumbnail(bot.avatarURL)
+
+
+
+                //send message and log everything
+                message.channel.send(HelpEmbed)
+                WriteLine(FileLogDate + "Help " + " || " +  message.author.tag + " || " + message.guild.name)
+                bot.channels.get(logsChannelID).send(LogEmbed)
+                console.log(FileLogDate + " Helping  " + "||" + message.author.tag + "||" + message.guild.name)
+                break;
+
+                break;
             //if its help
             case "help-moderation":
                 //define help embed
@@ -98,7 +122,7 @@ bot.on('message', message =>{
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
                     .setDescription("prefix = ?")
-                    .addField( ' :blue_circle: delete', "deletes a custom amount(max 99) of messages in a channel `?delete < quantity >`")
+                    .addField( ' :blue_circle: delete', "deletes a custom amount(max:99)of messages in a channel`?delete < quantity >`")
                     .addField( ' :blue_circle: Spam', "Sends a custom amount of messages in a channel (its slow) `?spam< quantity >`")
                     .addField( ' :blue_circle:  warn', "Warns a member and sends a dm to the user`?warn < mention >< reason >`")
                     .addField( ':blue_circle:  kick', "Kicks a member and sends a dm to the user `?kick < mention >< reason >`")
@@ -114,9 +138,9 @@ bot.on('message', message =>{
                 console.log(FileLogDate + " Helping mods " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
 
-            case "help":
+            case "help-user":
                 //define help embed
-                const HelpEmbed = new RichEmbed()
+                const HelpUserEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
                     .setDescription("prefix = ?")
@@ -124,14 +148,14 @@ bot.on('message', message =>{
                     .addField(':blue_circle: leaderboard', 'shows the top 3 users for this server `?leaderboard`')
                     .addField(':blue_circle: Server Info', 'shows the info of the current server `?serverinfo`')
                     .addField(':blue_circle: Role Info', 'shows info of the role mentioned `?roleinfo < ID >`')
-                    .addField(':blue_circle: Reddit', 'seaches a reddit post (if random selects a random meme) \n`?reddit < subreddit/random > <hot/top/new/rising>`')
+                    .addField(':blue_circle: Reddit', 'seaches a reddit post (if random selects a random meme) \n`?reddit < subreddit/random >`')
                     .setTimestamp()
 
                 //send message and log everything
-                message.channel.send(HelpEmbed)
-                WriteLine(FileLogDate + "Help " + " || " +  message.author.tag + " || " + message.guild.name)
+                message.channel.send(HelpUserEmbed)
+                WriteLine(FileLogDate + "Help user" + " || " +  message.author.tag + " || " + message.guild.name)
                 bot.channels.get(logsChannelID).send(LogEmbed)
-                console.log(FileLogDate + " Helping " + "||" + message.author.tag + "||" + message.guild.name)
+                console.log(FileLogDate + " Helping users " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
             case "random":
                 //get the amount and get the random number and check if its an actual number
@@ -500,6 +524,7 @@ bot.on('message', message =>{
                 //get the role id to input
                 target = message.content.split(" ")[1]
 
+                if(!target){message.channel.send("send a role id"); return;}
                 //get the role mention
                 const TargetRole = message.guild.roles.find( role => role.id == target)
 
@@ -535,38 +560,65 @@ bot.on('message', message =>{
                 if(!amount){
                     amount = "hot"
                 }
+
+
                 reddit(target, amount).then(data =>{
-                    console.log(data)
+
                     //if nsfw and the channel is not nsfw dont send anything
                     if(data.nsfw === true && !message.channel.nsfw){
-                            message.channel.send("no nsfw posts are allowed in this channel")
-                            return;
-
+                        message.channel.send("no nsfw posts are allowed in this channel")
+                        return;
                     }
                     if(!data.url.endsWith(".jpg") && !data.url.endsWith(".gif") && !data.url.endsWith(".png") && !data.url.endsWith(".webp")){
                         const redditembed = new RichEmbed ()
                             .setColor('#ff7b00')
                             .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
-
                             .setDescription(`[Reddit Post](${data.permalink})` + ` || from ${data.subreddit}`)
                         message.channel.send(redditembed)
                         message.channel.send(data.url)
                         return;
-
                     }
-
                     //define the embed for the post
                     const redditembed = new RichEmbed ()
                         .setColor('#ff7b00')
                         .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
                         .setImage(data.url)
                         .setDescription(`[Reddit Post](${data.permalink})` + ` | from ${data.subreddit}  | by u/${data.author}`)
-
-                    message.channel.send(redditembed)
-                })
-
+                    message.channel.send(redditembed)})
                 break;
 
+            case "resetleaderboard":
+
+                //check permissions
+                if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
+
+                //delete data
+                db.run(`DELETE FROM data`);
+                //send message
+                message.channel.send("Leaderbord succesfully resetted! :thumbsup:")
+                break;
+            case "resetcases":
+
+                //check permissions
+                if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
+
+                //check target
+                target = message.content.split(" ")[1]
+                //check targe
+                if(!target){message.channel.send("send user ID");return;}
+                targetID = target.toString().replace(/[\\<>@#&!]/g , " ")
+                if(isNaN(targetID)){message.channel.send("Error!");return;}
+
+                //delete
+                db.run(`DELETE FROM cases WHERE userid = ${targetID}`)
+                //get the embed
+                const ResetCasesEmbed = new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle(`Reseted cases succesfully`)
+                    .setDescription("this user now has 0 cases ")
+                //send the embed
+                message.channel.send(ResetCasesEmbed)
+                break;
 
 
         }
@@ -590,7 +642,7 @@ bot.on('messageUpdate', (oldMessage, newMessage) => {
             .addField( 'Old Content', "```" + ` ${oldMessage} `+"```", true )
             .addField( 'New Content', "```" + ` ${newMessage} `+"```", true )
             .addField("Channel", ` in <#${newMessage.channel.id}>`, true )
-            .addField("Message Link", newMessage.url)
+            .addField("Message Link", ` [Message](${newMessage.url})`)
             .addField("Sent by" , `<@${newMessage.author.id}>`)
             .setTimestamp()
 
@@ -637,6 +689,7 @@ bot.on("guildMemberAdd", (member) =>{
     member.guild.channels.get(logsChannelID).send(guildMemberAddEmbed)
 
 })
+
 bot.login(token)
 
 
