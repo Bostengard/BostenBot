@@ -9,6 +9,7 @@ const {RichEmbed} = require('discord.js.old')
 const { reddit } = require('@kindl3d/reddit.js');
 
 
+
 //global variables
 const bot = new Discord.Client();
 let FileLogDate = moment(new Date()).format("DD MM YYYY")
@@ -38,16 +39,18 @@ bot.on('message', message =>{
     if (message.author.bot){return;}
     if(message.guild === null){return;}
 
+
+
     //update the date
     FileLogDate = moment(new Date()).format("DD MM YYYY hh:mm:ss")
 
     //create a database and the tables if they don't exist with it
     let db  = new sqlite.Database(`./Databases/${message.guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // one database per guild
-    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL, Cases INTEGER NOT NULL, Messages INTEGER NOT NULL)`) // data table : 4 rows
+    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL, Cases INTEGER NOT NULL, Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
     db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL )`) //cases table 6 rows
 
     // create basic database functions
-    let insertdata = db.prepare(`INSERT INTO data VALUES(?,?,?,?)`)
+    let insertdata = db.prepare(`INSERT INTO data VALUES(?,?,?,?,?)`)
     let insertcases = db.prepare(`INSERT INTO cases VALUES(?,?,?,?,?,?)`)
     let dataquery = `SELECT * FROM data WHERE UserId = ?`;
     let casesquery = `SELECT * FROM cases WHERE UserId = ?`;
@@ -58,10 +61,13 @@ bot.on('message', message =>{
     db.get(dataquery,[message.author.id], (err, row) =>{
         if (err) {console.log(err);return;}
         if (row === undefined) {
-            insertdata.run(message.author.tag, message.author.id,"0","1")
+            insertdata.run(message.author.tag, message.author.id,"0","1","1")
         } else {
             const messageN = row.Messages
+            const levelN = row.level
             db.run(`UPDATE data SET Messages = ? WHERE userid = ?`, [messageN + 1, message.author.id])
+            if(messageN == levelN * 1000 ){db.run(`UPDATE data SET level = ? WHERE userid = ?`, [ levelN + 1, message.author.id]);  message.channel.send(`Congratulations you leveled up to level ${levelN + 1}`)}
+
         }
 
     })
@@ -98,12 +104,12 @@ bot.on('message', message =>{
             case "help":
                 const HelpEmbed = new RichEmbed()
                     .setColor('#38F20A')
-                    .setTitle("Lord Bostengard's Lobby")
+                    .setTitle("BostenBot")
                     .setURL(Bostengard)
                     .setDescription("prefix = ?")
-                    .addField( ' :blue_circle: User', "User Command `?help-user`",true)
+                    .addField( ' :blue_circle: User', "User Commands `?help-user`",true)
                     .addField( ' :blue_circle: Mods', "Moderator Commands `?help-moderation`",true)
-                    .setThumbnail(bot.avatarURL)
+                    .setTimestamp()
 
 
 
@@ -114,7 +120,6 @@ bot.on('message', message =>{
                 console.log(FileLogDate + " Helping  " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
 
-                break;
             //if its help
             case "help-moderation":
                 //define help embed
@@ -126,9 +131,13 @@ bot.on('message', message =>{
                     .addField( ' :blue_circle: Spam', "Sends a custom amount of messages in a channel (its slow) `?spam< quantity >`")
                     .addField( ' :blue_circle:  warn', "Warns a member and sends a dm to the user`?warn < mention >< reason >`")
                     .addField( ':blue_circle:  kick', "Kicks a member and sends a dm to the user `?kick < mention >< reason >`")
+                    .addField( ':blue_circle: Mute', "Mutes a mentioned membed `?mute < mention > < reason >")
+                    .addField( ':blue_circle: UnMute', "UnMutes a mentioned membed `?mute < mention >")
                     .addField( ':blue_circle:  ban', "Bans a member and sends a dm to the mentioned user `?ban < mention><reason>`")
                     .addField( ':blue_circle:  slowmode', "Changes the slowmode in a channel `?slowmode < amount >< channel >`")
                     .addField( ':blue_circle: cases', "shows the cases for a person and their type`?cases < mention >`")
+                    .addField( ':blue_circle: Reset leaderboard', "Resets the server leaderboard `?resetleaderboard`")
+                    .addField( ':blue_circle: Reset Cases', "Resets a user leaderboard `?reset < mention/ID >`")
                     .setTimestamp()
 
                 //send message and log everything
@@ -157,6 +166,7 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping users " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
+
             case "random":
                 //get the amount and get the random number and check if its an actual number
                 amount = message.content.split(" ")[1];
@@ -206,7 +216,7 @@ bot.on('message', message =>{
                 if (isNaN(amount)){message.channel.send("thats not a number"); return;}
                 if (!amount){message.channel.send(" < amount >"); return;}
                 if (amount > 99){message.channel.send("max 99"); return;}
-                if (!message.member.hasPermission("MANAGE_MESSAGES")){;message.channel.send("missing permissions"); return;}
+                if (!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
 
                 //define the embed
                 const DeleteEmbed = new RichEmbed()
@@ -329,8 +339,8 @@ bot.on('message', message =>{
                     }
                 })
                 // send message and ban
-                try{target.send("you've been banned from " + message.guild.name + ". Reason : " + reason).catch(console.error)}catch (err){}
-                try{message.guild.members.get(targetID).kick()}catch (err){ console.log(err); message.channel.send(" Error!: couldn't kick"); return;}
+                try{target.send("you've been banned from " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
+                try{message.guild.members.get(targetID).ban()}catch (err){ console.log(err); message.channel.send(" Error!: couldn't kick"); return;}
                 message.channel.send(BanEmbed);
 
                 // log everything
@@ -386,7 +396,7 @@ bot.on('message', message =>{
 
                 //send message and log everything
                 message.channel.send(WarnEmbed)
-                target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch(console.error)
+                try{target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
                 WriteLine(FileLogDate + " Warned: "  + target.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + reason)
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 bot.channels.get(logsChannelID).send("warned " + target.tag + " || " + target.id ).catch(console.error)
@@ -486,7 +496,7 @@ bot.on('message', message =>{
                 db.get(dataquery,[message.author.id], (err, row) =>{
                     if (err) {console.log(err);return;}
                     if (row === undefined) {
-                        message.channel.send("Error getting your messages"); return;
+                        message.channel.send("Error getting your messages")
                     } else {
                         const messageN = row.Messages
                         leaderboardEmbed.addField(":blue_circle: your messages",`you have a total of ${messageN} messages in this server`)
@@ -526,7 +536,7 @@ bot.on('message', message =>{
 
                 if(!target){message.channel.send("send a role id"); return;}
                 //get the role mention
-                const TargetRole = message.guild.roles.find( role => role.id == target)
+                const TargetRole = message.guild.roles.find( role => role.id === target)
 
                 //get the embed with the info
                 const RoleEmbed = new RichEmbed()
@@ -546,13 +556,12 @@ bot.on('message', message =>{
 
             case "reddit":
 
-
                 //get the subreddit
                 target = message.content.split(" ")[1]
                 amount = message.content.split(" ")[2]
 
                 //get the post with all the data
-                if(target == "random"){
+                if(target === "random"){
                     const redditamount = Math.floor(Math.random() * subreddits.length)
                     target = subreddits[redditamount]
                 }
@@ -589,6 +598,7 @@ bot.on('message', message =>{
 
             case "resetleaderboard":
 
+
                 //check permissions
                 if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
 
@@ -597,6 +607,7 @@ bot.on('message', message =>{
                 //send message
                 message.channel.send("Leaderbord succesfully resetted! :thumbsup:")
                 break;
+
             case "resetcases":
 
                 //check permissions
@@ -620,6 +631,85 @@ bot.on('message', message =>{
                 message.channel.send(ResetCasesEmbed)
                 break;
 
+            case "mute":
+
+                //check permissions
+                if(!message.member.hasPermission("MANAGE_ROLES_OR_PERMISSIONS")){message.channel.send("missing permissions"); return;}
+                target = message.mentions.members.first()
+                const Target2 = message.mentions.users.first()
+                if(!target){message.channel.send("Mention a user"); return;}
+                if(target.hasPermission("MANAGE_ROLES_OR_PERMISSIONS")){message.channel.send("can't mute that member");return;}
+                targetID = target.toString().replace(/[\\<>@#&!]/g, "")
+
+
+                //reason moment
+                reason = message.content.split(" ")[2]
+                if(!reason){reason = "no reason provided"}
+                //get the role
+                const muteRole = message.guild.roles.find(role => role.name === "Muted")
+                if(!muteRole){message.channel.send('Theres no mute role, to use this command create a role with name "Muted"' );return;}
+                //change permissions for all the channels
+                message.guild.channels.forEach( function (channel){
+                    channel.overwritePermissions(muteRole, {
+                        SEND_MESSAGES: false,
+                        ADD_REACTIONS: false
+                    }).then()
+                })
+
+                db.get(dataquery, [message.author.id], (err, row) =>{
+                    if(err){console.log(err); return;}
+                    if (row === undefined){message.channel.send("Error!: couldn't add data to the database")}
+                    else {
+                        //get cases and update the number
+                        cases = row.Cases
+                        db.run(`UPDATE data SET Cases = ? WHERE UserID = ?`, [cases + 1, targetID])
+                    }
+                })
+                // get cases and update it
+                db.get(casesquery, [targetID], (err, row) => {
+                    if(err){console.log(err); return;}
+                    if(row === undefined){insertcases.run(reason,targetID,Target2.tag,message.author.tag,message.author.id,"Mute")}
+                    else {
+                        //put another row of info into the database
+                        insertcases.run(reason,targetID, Target2.tag,message.author.tag, message.author.id, "Mute")
+                    }
+                })
+
+                const muteEmbed = new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle(`Muted ${message.mentions.users.first().tag}`)
+                    .setDescription(`Muted by ${message.author.tag} `)
+                    .setTimestamp()
+
+                target.addRole(muteRole);
+                message.channel.send(muteEmbed)
+                WriteLine(FileLogDate + " Muted: " + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
+                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
+                console.log(FileLogDate + " MUTED: " + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
+                break;
+
+            case "unmute":
+                //check permissions
+                if(!message.member.hasPermission("MANAGE_ROLES_OR_PERMISSIONS")){message.channel.send("missing permissions"); return;}
+
+                //get the target
+                target = message.mentions.members.first();
+                if(!target){message.channel.send("Mention a user"); return;}
+                //get the role
+                const unmuteRole = message.guild.roles.find(role => role.name === "Muted")
+                if(!unmuteRole){message.channel.send('Theres no mute role, to use this command create a role with name "Muted"' );return;}
+
+
+                if(!target.roles.has(unmuteRole)){message.channel.send("this user is not muted");return;}
+                target.removeRole(unmuteRole);
+                const unmuteEmbed = new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle(`UnMuted ${message.mentions.users.first().tag}`)
+                    .setDescription(`UnMuted by ${message.author.tag} `)
+                    .setTimestamp()
+                message.channel.send(unmuteEmbed)
+                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
+                break;
 
         }
     }
@@ -635,7 +725,7 @@ bot.on('messageUpdate', (oldMessage, newMessage) => {
     if(!logsChannel){return;}
     const logsChannelID = logsChannel.id;
     //send embed with info
-    if(newMessage.content != oldMessage){
+    if(newMessage.content !== oldMessage){
         const EditedEmbed= new RichEmbed()
             .setColor('#0000ff')
             .setTitle("Message Edited")
@@ -652,7 +742,7 @@ bot.on('messageUpdate', (oldMessage, newMessage) => {
     }
 });
 bot.on("messageDelete" , (messageDelete) => {
-
+    if(!messageDelete.guild){return;}
     const logsChannel = messageDelete.guild.channels.find(channel => channel.name === "logs");
     if(!logsChannel){return;}
     const logsChannelID = logsChannel.id;
@@ -689,6 +779,25 @@ bot.on("guildMemberAdd", (member) =>{
     member.guild.channels.get(logsChannelID).send(guildMemberAddEmbed)
 
 })
+
+bot.on("guildDelete", (guild) =>{
+    fs.unlink(`./Databases/${guild.id}.db`, (name) => "")
+})
+bot.on("guildCreate", guild => {
+    let db  = new sqlite.Database(`./Databases/${guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
+    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL, Cases INTEGER NOT NULL, Messages INTEGER NOT NULL)`) // data table : 4 rows
+    db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL )`) //cases table 6 rows
+
+    guild.channels.forEach( function (channel) {
+        if(channel.type == "text" && channel.name.includes("general"||"bot"||"staff")){
+            channel.send("Hey, this is BostenBot, type `?help` to know more about my commands")
+            return;
+        }else {
+            return;
+        }
+
+    })
+});
 
 bot.login(token)
 
