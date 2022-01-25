@@ -7,6 +7,8 @@ const sqlite = require('sqlite3').verbose();
 const fs = require('fs')
 const {RichEmbed} = require('discord.js.old')
 const { reddit } = require('@kindl3d/reddit.js');
+const mathjs = require('mathjs')
+
 
 
 
@@ -46,22 +48,24 @@ bot.on('message', message =>{
 
     //create a database and the tables if they don't exist with it
     let db  = new sqlite.Database(`./Databases/${message.guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // one database per guild
-    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL, Cases INTEGER NOT NULL, Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-    db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL )`) //cases table 6 rows
+    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
+    db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NOT NULL)`) //cases table 7 rows
 
     // create basic database functions
-    let insertdata = db.prepare(`INSERT INTO data VALUES(?,?,?,?,?)`)
-    let insertcases = db.prepare(`INSERT INTO cases VALUES(?,?,?,?,?,?)`)
+    let insertdata = db.prepare(`INSERT INTO data VALUES(?,?,?,?)`)
+    let insertcases = db.prepare(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`)
     let dataquery = `SELECT * FROM data WHERE UserId = ?`;
     let casesquery = `SELECT * FROM cases WHERE UserId = ?`;
     let leaderboardquery = `SELECT * FROM data ORDER BY Messages DESC LIMIT 3`
 
 
+
     //update the message count of the user  Get the row, the message count +1 and update it (sort by message author id)
+
     db.get(dataquery,[message.author.id], (err, row) =>{
         if (err) {console.log(err);return;}
         if (row === undefined) {
-            insertdata.run(message.author.tag, message.author.id,"0","1","1")
+            insertdata.run(message.author.tag, message.author.id,"0","1")
         } else {
             const messageN = row.Messages
             const levelN = row.level
@@ -109,6 +113,7 @@ bot.on('message', message =>{
                     .setDescription("prefix = ?")
                     .addField( ' :blue_circle: User', "User Commands `?help-user`",true)
                     .addField( ' :blue_circle: Mods', "Moderator Commands `?help-moderation`",true)
+                    .addField( ' :blue_circle: Math', "Math command `?help-math`",true)
                     .setTimestamp()
 
 
@@ -119,7 +124,6 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping  " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
-
             //if its help
             case "help-moderation":
                 //define help embed
@@ -157,7 +161,7 @@ bot.on('message', message =>{
                     .addField(':blue_circle: leaderboard', 'shows the top 3 users for this server `?leaderboard`')
                     .addField(':blue_circle: Server Info', 'shows the info of the current server `?serverinfo`')
                     .addField(':blue_circle: Role Info', 'shows info of the role mentioned `?roleinfo < ID >`')
-                    .addField(':blue_circle: Reddit', 'seaches a reddit post (if random selects a random meme) \n`?reddit < subreddit/random >`')
+                    .addField(':blue_circle: math', 'solves your maths quations `?math < operation > `')
                     .setTimestamp()
 
                 //send message and log everything
@@ -165,6 +169,24 @@ bot.on('message', message =>{
                 WriteLine(FileLogDate + "Help user" + " || " +  message.author.tag + " || " + message.guild.name)
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping users " + "||" + message.author.tag + "||" + message.guild.name)
+                break;
+
+            case "help-math":
+                const HelpMathEmbed = new RichEmbed()
+                    .setColor('#38F20A')
+                    .setTitle("Lord Bostengard's Commands")
+                    .setDescription("Usage = `?math < operation>`")
+                    .addField( ' :blue_circle: Basic Operations', "Plus: `x + y` Minus: `x - y` Multiply: `x * y` Divide: `X / y`  ")
+                    .addField(':blue_circle: Functions and constants', 'Round: `round( x , < decimals to round >)` \n Atan2:  `atan2(x,y)` \n Logarithm: `log(x)` \n Power: `pow( < base >, < power >` \n Square root: `sqrt(x)` \n Derivative: `derivative( x , y )`')
+                    .addField(':blue_circle: Unit change', ' `x < initial > to < final >` Example: `?math 10 inch to cm`')
+                    .addField(':blue_circle: Other Operations', 'Cos: `cos(x)` \n Tan: `tan(x)` \n Determinant: `det([matrix values])` Example: `det([-1, 2; 3, 1])` ')
+                    .addField(':blue_circle: Usefull Info', 'Number pi: `pi` Example : ` 1 * pi` \n Degree: `deg` Example: `cos(45 deg)` \n Simplify: `simplify(x)` Example: `simplify(3 + 2 / 4) = "7 / 2 "`')
+                    .addField('Official documentation', "[Constants](https://mathjs.org/docs/reference/constants.html) , [Main Page](https://mathjs.org/docs/index.html)")
+                    .setTimestamp()
+
+                message.channel.send(HelpMathEmbed)
+
+
                 break;
 
             case "random":
@@ -281,22 +303,13 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed ).catch(console.error)
                 bot.channels.get(logsChannelID).send("kicked " + target.tag + " || " + target.id ).catch(console.error)
                 console.log(FileLogDate + " Kicked "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
-                db.get(dataquery, [message.author.id], (err, row) =>{
-                    if(err){console.log(err); return;}
-                    if (row === undefined){message.channel.send("Error!: couldn't add data to the database")}
-                    else {
-                        //get cases and update the number
-                        cases = row.Cases
-                        db.run(`UPDATE data SET Cases = ? WHERE UserID = ?`, [cases + 1, targetID])
-                    }
-                })
                 //get the cases table and put info
                 db.get(casesquery, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"kick")}
+                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"kick",moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "kick")
+                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "kick",moment(Date.now()).format('DD:MM:YYYY'))
                     }
                 })
                 break;
@@ -319,23 +332,13 @@ bot.on('message', message =>{
                     .addField( ':blue_circle: Banned by', message.author.tag)
                     .setTimestamp()
 
-                //get data from data table
-                db.get(dataquery, [message.author.id], (err, row) =>{
-                    if(err){console.log(err); return;}
-                    if (row === undefined){message.channel.send("Error!: couldn't add data to the database")}
-                    else {
-                        //get cases and update the number
-                        cases = row.Cases
-                        db.run(`UPDATE data SET Cases = ? WHERE UserID = ?`, [cases + 1, targetID])
-                    }
-                })
                 // get data fomr cases table and update it
                 db.get(casesquery, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"ban")}
+                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"ban",moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "ban")
+                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "ban",moment(Date.now()).format('DD:MM:YYYY'))
                     }
                 })
                 // send message and ban
@@ -402,23 +405,13 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send("warned " + target.tag + " || " + target.id ).catch(console.error)
                 console.log(FileLogDate + " Warned: "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " +reason)
 
-                //get data and update
-                db.get(dataquery, [message.author.id], (err, row) =>{
-                    if(err){console.log(err); return;}
-                    if (row === undefined){message.channel.send("Error!: couldn't add data to the database")}
-                    else {
-                        //get cases and update the number
-                        cases = row.Cases
-                        db.run(`UPDATE data SET Cases = ? WHERE UserID = ?`, [cases + 1, targetID])
-                    }
-                })
                 // get cases and update it
                 db.get(casesquery, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"Warn")}
+                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"Warn",moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "Warn")
+                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "Warn",moment(Date.now()).format('DD:MM:YYYY'))
                     }
                 })
 
@@ -470,9 +463,10 @@ bot.on('message', message =>{
                         let reasonC = rows.Reason
                         let moderator = rows.ModeratorTag
                         let type = rows.CaseType
+                        let date = rows.Date
 
 
-                        CasesEmbedRows.addField(`:blue_circle: ${amount}: ${type}`,`Reason:  `+"`  " +reasonC+"  `" +"  By:   `  " + moderator + "  `")
+                        CasesEmbedRows.addField(`:blue_circle: ${amount}: ${type}`,`Reason:` + "`"+reasonC+"`" +"\n By: `" + moderator + "` \n At: `" + date + "`",true)
                         amount++
 
                     })
@@ -630,6 +624,7 @@ bot.on('message', message =>{
                 //send the embed
                 message.channel.send(ResetCasesEmbed)
                 break;
+                d
 
             case "mute":
 
@@ -643,7 +638,7 @@ bot.on('message', message =>{
 
 
                 //reason moment
-                reason = message.content.split(" ")[2]
+                reason = args.slice(2).join(' ');
                 if(!reason){reason = "no reason provided"}
                 //get the role
                 const muteRole = message.guild.roles.find(role => role.name === "Muted")
@@ -656,22 +651,13 @@ bot.on('message', message =>{
                     }).then()
                 })
 
-                db.get(dataquery, [message.author.id], (err, row) =>{
-                    if(err){console.log(err); return;}
-                    if (row === undefined){message.channel.send("Error!: couldn't add data to the database")}
-                    else {
-                        //get cases and update the number
-                        cases = row.Cases
-                        db.run(`UPDATE data SET Cases = ? WHERE UserID = ?`, [cases + 1, targetID])
-                    }
-                })
                 // get cases and update it
                 db.get(casesquery, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,Target2.tag,message.author.tag,message.author.id,"Mute")}
+                    if(row === undefined){insertcases.run(reason,targetID,Target2.tag,message.author.tag,message.author.id,"Mute", moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID, Target2.tag,message.author.tag, message.author.id, "Mute")
+                        insertcases.run(reason,targetID, Target2.tag,message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY'))
                     }
                 })
 
@@ -711,6 +697,21 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 break;
 
+            case "math":
+
+                try{
+                    const result = mathjs.evaluate(args.slice(1).join(" "))
+                    const MathEmbed = new RichEmbed()
+                        .setColor('#000fff')
+                        .addField(' :blue_circle: Operation ', "`" + args.slice(1).join(" ") + "`")
+                        .addField(' :blue_circle: Result' , "`" + result + "`")
+                    message.channel.send(MathEmbed)
+
+                }catch (err){
+                    message.channel.send("invalid question type `?help-math` to know more. \n Make sure it's the correct format")
+
+                }
+                break;
         }
     }
 
@@ -771,7 +772,7 @@ bot.on("guildMemberAdd", (member) =>{
         .setColor('#000fff')
         .setTitle('New Member')
         .setTitle('A new user has joined the server')
-        .addField('Name', "`" + member.name + "`" ,true)
+        .addField('Name', member.toString() ,true)
         .addField('ID', "`" + member.id + "`" ,true)
         .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
         .setThumbnail(member.avatarURL)
