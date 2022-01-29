@@ -1,6 +1,7 @@
 //import libraries
 const Discord = require('discord.js.old');
 const config = require('./Config.json');
+const dictionary = require('./dictionary.json')
 const token = config.token;
 const moment = require('moment');
 const sqlite = require('sqlite3').verbose();
@@ -8,6 +9,10 @@ const fs = require('fs')
 const {RichEmbed} = require('discord.js.old')
 const { reddit } = require('@kindl3d/reddit.js');
 const mathjs = require('mathjs')
+const ytdl = require('discord-ytdl-core')
+var servers = {};
+
+
 
 
 
@@ -22,8 +27,9 @@ let target = ""
 let targetID = ""
 let amount = ""
 let cases = ""
+
 let Bostengard = "https://bostengard.github.io/"
-let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
+let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting","shitpostcrusaders","leagueofmemes","apandah", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
 
 
 //WHEN BOT IS READY LOG A MESSAGE IN CONSOLE AND IN .TXT LOGS
@@ -35,46 +41,25 @@ bot.on('ready', () =>{
 })
 
 //on message
-bot.on('message', message =>{
-
+bot.on('message', async message =>{
     //if the message is send by a bot dont do anything
     if (message.author.bot){return;}
     if(message.guild === null){return;}
-
-
-
     //update the date
     FileLogDate = moment(new Date()).format("DD MM YYYY hh:mm:ss")
-
     //create a database and the tables if they don't exist with it
     let db  = new sqlite.Database(`./Databases/${message.guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // one database per guild
-    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-    db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NOT NULL)`) //cases table 7 rows
+        db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
+        db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
+
+
+    db = new sqlite.Database(`./Databases/${message.guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // refresh database to avoid errors
 
     // create basic database functions
     let insertdata = db.prepare(`INSERT INTO data VALUES(?,?,?,?)`)
     let insertcases = db.prepare(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`)
-    let dataquery = `SELECT * FROM data WHERE UserId = ?`;
-    let casesquery = `SELECT * FROM cases WHERE UserId = ?`;
     let leaderboardquery = `SELECT * FROM data ORDER BY Messages DESC LIMIT 3`
 
-
-
-    //update the message count of the user  Get the row, the message count +1 and update it (sort by message author id)
-
-    db.get(dataquery,[message.author.id], (err, row) =>{
-        if (err) {console.log(err);return;}
-        if (row === undefined) {
-            insertdata.run(message.author.tag, message.author.id,"0","1")
-        } else {
-            const messageN = row.Messages
-            const levelN = row.level
-            db.run(`UPDATE data SET Messages = ? WHERE userid = ?`, [messageN + 1, message.author.id])
-            if(messageN == levelN * 1000 ){db.run(`UPDATE data SET level = ? WHERE userid = ?`, [ levelN + 1, message.author.id]);  message.channel.send(`Congratulations you leveled up to level ${levelN + 1}`)}
-
-        }
-
-    })
 
     //get the logs channel w/ id
     const logsChannel = message.guild.channels.find(channel => channel.name.includes("logs"));
@@ -84,6 +69,7 @@ bot.on('message', message =>{
     if (message.content.startsWith(config.prefix)){
 
         //if theres no log channel send a message and stop
+
         if(!logsChannel){message.channel.send('There is no logs channel, create a channel with the name "logs" to start using this bot '); return;}
 
         //split message
@@ -102,18 +88,16 @@ bot.on('message', message =>{
         //check what command is it with a switch args
 
         switch (args[0]){
-
-
-
             case "help":
                 const HelpEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("BostenBot")
                     .setURL(Bostengard)
                     .setDescription("prefix = ?")
-                    .addField( ' :blue_circle: User', "User Commands `?help-user`",true)
-                    .addField( ' :blue_circle: Mods', "Moderator Commands `?help-moderation`",true)
-                    .addField( ' :blue_circle: Math', "Math command `?help-math`",true)
+                    .addField( ' :blue_circle: User', "User Commands\n `?help-user`",true)
+                    .addField( ' :blue_circle: Mods', "Moderator Commands\n `?help-moderation`",true)
+                    .addField( ' :blue_circle: Math', "Math commands\n `?help-math`",true)
+                    .addField( ' :blue_circle: Music', "Music commands\n `?help-music`",true)
                     .setTimestamp()
 
 
@@ -124,21 +108,20 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping  " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
-            //if its help
             case "help-moderation":
                 //define help embed
                 const HelpmodEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
                     .setDescription("prefix = ?")
-                    .addField( ' :blue_circle: delete', "deletes a custom amount(max:99)of messages in a channel`?delete < quantity >`")
-                    .addField( ' :blue_circle: Spam', "Sends a custom amount of messages in a channel (its slow) `?spam< quantity >`")
-                    .addField( ' :blue_circle:  warn', "Warns a member and sends a dm to the user`?warn < mention >< reason >`")
-                    .addField( ':blue_circle:  kick', "Kicks a member and sends a dm to the user `?kick < mention >< reason >`")
+                    .addField( ':blue_circle: delete', "deletes a custom amount(max:99)of messages in a channel`?delete < quantity >`")
+                    .addField( ':blue_circle: Spam', "Sends a custom amount of messages in a channel (its slow) `?spam< quantity >`")
+                    .addField( ':blue_circle: warn', "Warns a member and sends a dm to the user`?warn < mention >< reason >`")
+                    .addField( ':blue_circle: kick', "Kicks a member and sends a dm to the user `?kick < mention >< reason >`")
                     .addField( ':blue_circle: Mute', "Mutes a mentioned membed `?mute < mention > < reason >")
                     .addField( ':blue_circle: UnMute', "UnMutes a mentioned membed `?mute < mention >")
-                    .addField( ':blue_circle:  ban', "Bans a member and sends a dm to the mentioned user `?ban < mention><reason>`")
-                    .addField( ':blue_circle:  slowmode', "Changes the slowmode in a channel `?slowmode < amount >< channel >`")
+                    .addField( ':blue_circle: ban', "Bans a member and sends a dm to the mentioned user `?ban < mention><reason>`")
+                    .addField( ':blue_circle: slowmode', "Changes the slowmode in a channel `?slowmode < amount >< channel >`")
                     .addField( ':blue_circle: cases', "shows the cases for a person and their type`?cases < mention >`")
                     .addField( ':blue_circle: Reset leaderboard', "Resets the server leaderboard `?resetleaderboard`")
                     .addField( ':blue_circle: Reset Cases', "Resets a user leaderboard `?reset < mention/ID >`")
@@ -150,7 +133,6 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping mods " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
-
             case "help-user":
                 //define help embed
                 const HelpUserEmbed = new RichEmbed()
@@ -170,8 +152,21 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping users " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
+            case "help-music":
+                //define help embed
+                const HelpMusic = new RichEmbed()
+                    .setColor('#38F20A')
+                    .setTitle("Lord Bostengard's Commands")
+                    .setDescription("usage = ?music <>")
+                    .addField(':blue_circle: play', "Play a youtube video (send link) `?music play < link >`")
+                    .addField(':blue_circle: skip', 'Skips to the next song in the queue `?music skip`')
+                    .addField(':blue_circle: stop', 'Stops the music and resets the queue `?music stop`')
+                    .setTimestamp()
+                message.channel.send(HelpMusic);
 
+                break;
             case "help-math":
+
                 const HelpMathEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
@@ -188,7 +183,6 @@ bot.on('message', message =>{
 
 
                 break;
-
             case "random":
                 //get the amount and get the random number and check if its an actual number
                 amount = message.content.split(" ")[1];
@@ -208,10 +202,7 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 console.log(FileLogDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
                 break;
-
             case "aboutme":
-
-
                 //define the embed
                 const AboutEmbed = new RichEmbed()
                     .setColor('#38F20A')
@@ -229,7 +220,6 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 console.log(FileLogDate + " About me"  + " || " + message.author.tag + " || " + message.guild.name)
                 break;
-
             case "delete":
 
                 //get amount
@@ -256,7 +246,6 @@ bot.on('message', message =>{
                 console.log(FileLogDate + " Deleted "  + amount +  " || " + message.author.tag + " || " + message.guild.name)
 
                 break;
-
             case "spam":
 
                 //get amount
@@ -269,7 +258,6 @@ bot.on('message', message =>{
                     message.channel.send(`${amount - a - 1} messages missing`)
                 }
                 break;
-
             case "kick":
 
                 //get targets info and check unviable option
@@ -299,12 +287,8 @@ bot.on('message', message =>{
 
                 //send embed and log everything
                 message.channel.send(KickEmbed)
-                WriteLine(FileLogDate + " Kicked "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + reason )
-                bot.channels.get(logsChannelID).send(LogEmbed ).catch(console.error)
-                bot.channels.get(logsChannelID).send("kicked " + target.tag + " || " + target.id ).catch(console.error)
-                console.log(FileLogDate + " Kicked "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
-                //get the cases table and put info
-                db.get(casesquery, [targetID], (err, row) => {
+
+                db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
                     if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"kick",moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
@@ -312,8 +296,14 @@ bot.on('message', message =>{
                         insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "kick",moment(Date.now()).format('DD:MM:YYYY'))
                     }
                 })
-                break;
 
+                WriteLine(FileLogDate + " Kicked "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + reason )
+                bot.channels.get(logsChannelID).send(LogEmbed ).catch(console.error)
+                bot.channels.get(logsChannelID).send("kicked " + target.tag + " || " + target.id ).catch(console.error)
+                console.log(FileLogDate + " Kicked "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
+                //get the cases table and put info
+
+                break;
             case "ban":
 
                 //get target and info and check unviable option
@@ -332,8 +322,14 @@ bot.on('message', message =>{
                     .addField( ':blue_circle: Banned by', message.author.tag)
                     .setTimestamp()
 
+
+                // send message and ban
+                try{target.send("you've been banned from " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
+                try{message.guild.members.get(targetID).ban()}catch (err){ console.log(err); message.channel.send(" Error!: couldn't kick"); return;}
+                message.channel.send(BanEmbed);
+
                 // get data fomr cases table and update it
-                db.get(casesquery, [targetID], (err, row) => {
+                db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
                     if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"ban",moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
@@ -341,18 +337,12 @@ bot.on('message', message =>{
                         insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "ban",moment(Date.now()).format('DD:MM:YYYY'))
                     }
                 })
-                // send message and ban
-                try{target.send("you've been banned from " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
-                try{message.guild.members.get(targetID).ban()}catch (err){ console.log(err); message.channel.send(" Error!: couldn't kick"); return;}
-                message.channel.send(BanEmbed);
-
                 // log everything
                 WriteLine(FileLogDate + " Banned "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + reason )
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 bot.channels.get(logsChannelID).send("Banned " + target.tag + " || " + target.id ).catch(console.error)
                 console.log(FileLogDate + " Banned "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
                 break;
-
             case "slowmode":
 
                 // get the target info and the amount
@@ -378,7 +368,6 @@ bot.on('message', message =>{
                 console.log(FileLogDate + " Slowmode changed: " + amount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
 
                 break;
-
             case "warn":
 
                 //get target info
@@ -399,14 +388,8 @@ bot.on('message', message =>{
 
                 //send message and log everything
                 message.channel.send(WarnEmbed)
-                try{target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
-                WriteLine(FileLogDate + " Warned: "  + target.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + reason)
-                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
-                bot.channels.get(logsChannelID).send("warned " + target.tag + " || " + target.id ).catch(console.error)
-                console.log(FileLogDate + " Warned: "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " +reason)
-
                 // get cases and update it
-                db.get(casesquery, [targetID], (err, row) => {
+                db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
                     if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"Warn",moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
@@ -415,8 +398,15 @@ bot.on('message', message =>{
                     }
                 })
 
-                break;
+                try{target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
+                WriteLine(FileLogDate + " Warned: "  + target.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + reason)
+                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
+                bot.channels.get(logsChannelID).send("warned " + target.tag + " || " + target.id ).catch(console.error)
+                console.log(FileLogDate + " Warned: "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " +reason)
 
+
+
+                break;
             case "serverinfo":
 
                 //get member count
@@ -438,9 +428,9 @@ bot.on('message', message =>{
 
                 //send and log
                 message.channel.send(ServerInfoEmbed)
+
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 break;
-
             case "cases":
                 amount = 1
                 //check unviable options and format target
@@ -456,7 +446,7 @@ bot.on('message', message =>{
                     .setTitle(`This are the cases for ${message.mentions.users.first().tag}`)
                     .setThumbnail(targetID.avatarURL)
                 //get info and send it
-                db.all(casesquery, [target], (err, row) =>{
+                db.all(`SELECT * FROM cases WHERE UserId = ?`, [target], (err, row) =>{
                     if(err){console.log(err);message.channel.send("error getting data"); return;}
 
                     row.forEach( function (rows){
@@ -475,7 +465,6 @@ bot.on('message', message =>{
 
                 })
                 break;
-
             case "leaderboard":
                 //get the embed
                 const leaderboardEmbed= new RichEmbed()
@@ -487,7 +476,7 @@ bot.on('message', message =>{
 
 
                 //get info
-                db.get(dataquery,[message.author.id], (err, row) =>{
+                db.get(`SELECT * FROM data WHERE UserId = ?`,[message.author.id], (err, row) =>{
                     if (err) {console.log(err);return;}
                     if (row === undefined) {
                         message.channel.send("Error getting your messages")
@@ -523,7 +512,6 @@ bot.on('message', message =>{
                 })
 
                 break;
-
             case "roleinfo":
                 //get the role id to input
                 target = message.content.split(" ")[1]
@@ -547,63 +535,58 @@ bot.on('message', message =>{
                 message.channel.send(RoleEmbed)
 
                 break;
-
             case "reddit":
 
+
                 //get the subreddit
+                var loopamount = 0
                 target = message.content.split(" ")[1]
+                if(!target){target = "random"}
                 amount = message.content.split(" ")[2]
 
                 //get the post with all the data
-                if(target === "random"){
-                    const redditamount = Math.floor(Math.random() * subreddits.length)
-                    target = subreddits[redditamount]
-                }
+                if(target === "random"){const redditamount = Math.floor(Math.random() * subreddits.length); target = subreddits[redditamount]}
 
-                if(!amount){
-                    amount = "hot"
-                }
+                if(!amount){amount = "hot"}
+                redditpost(target)
+                function redditpost(target) {
+                    try {
+                        reddit(target, amount).then(data => {
 
-
-                reddit(target, amount).then(data =>{
-
-                    //if nsfw and the channel is not nsfw dont send anything
-                    if(data.nsfw === true && !message.channel.nsfw){
-                        message.channel.send("no nsfw posts are allowed in this channel")
-                        return;
+                            //if nsfw and the channel is not nsfw dont send anything
+                            if (data.nsfw === true && !message.channel.nsfw) {
+                                message.channel.send("no nsfw posts are allowed in this channel")
+                                return;
+                            }
+                            if (!data.url.endsWith(".jpg") && !data.url.endsWith(".gif") && !data.url.endsWith(".png") && !data.url.endsWith(".webp")) {
+                                loopamount ++
+                                if(loopamount > 4 ){message.channel.send("couldn't find a post that meets the format requirements"); return;}
+                               redditpost(target)
+                                return;
+                            }
+                            //define the embed for the post
+                            const redditembed = new RichEmbed()
+                                .setColor('#ff7b00')
+                                .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
+                                .setImage(data.url)
+                                .setDescription(`[Reddit Post](${data.permalink})` + ` | from ${data.subreddit}  | by u/${data.author}`)
+                            message.channel.send(redditembed)
+                        })
+                    } catch (e) {
+                        message.channel.send("Couldn't find any post! Try checking spelling")
                     }
-                    if(!data.url.endsWith(".jpg") && !data.url.endsWith(".gif") && !data.url.endsWith(".png") && !data.url.endsWith(".webp")){
-                        const redditembed = new RichEmbed ()
-                            .setColor('#ff7b00')
-                            .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
-                            .setDescription(`[Reddit Post](${data.permalink})` + ` || from ${data.subreddit}`)
-                        message.channel.send(redditembed)
-                        message.channel.send(data.url)
-                        return;
-                    }
-                    //define the embed for the post
-                    const redditembed = new RichEmbed ()
-                        .setColor('#ff7b00')
-                        .setTitle(data.title + `  |   :thumbsup: ${data.score}`)
-                        .setImage(data.url)
-                        .setDescription(`[Reddit Post](${data.permalink})` + ` | from ${data.subreddit}  | by u/${data.author}`)
-                    message.channel.send(redditembed)})
+                }
                 break;
-
             case "resetleaderboard":
-
-
                 //check permissions
                 if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
 
                 //delete data
                 db.run(`DELETE FROM data`);
-                //send message
+               //send message
                 message.channel.send("Leaderbord succesfully resetted! :thumbsup:")
                 break;
-
             case "resetcases":
-
                 //check permissions
                 if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
 
@@ -624,8 +607,6 @@ bot.on('message', message =>{
                 //send the embed
                 message.channel.send(ResetCasesEmbed)
                 break;
-                d
-
             case "mute":
 
                 //check permissions
@@ -652,7 +633,7 @@ bot.on('message', message =>{
                 })
 
                 // get cases and update it
-                db.get(casesquery, [targetID], (err, row) => {
+                db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
                     if(row === undefined){insertcases.run(reason,targetID,Target2.tag,message.author.tag,message.author.id,"Mute", moment(Date.now()).format('DD:MM:YYYY'))}
                     else {
@@ -673,7 +654,6 @@ bot.on('message', message =>{
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 console.log(FileLogDate + " MUTED: " + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
                 break;
-
             case "unmute":
                 //check permissions
                 if(!message.member.hasPermission("MANAGE_ROLES_OR_PERMISSIONS")){message.channel.send("missing permissions"); return;}
@@ -685,8 +665,6 @@ bot.on('message', message =>{
                 const unmuteRole = message.guild.roles.find(role => role.name === "Muted")
                 if(!unmuteRole){message.channel.send('Theres no mute role, to use this command create a role with name "Muted"' );return;}
 
-
-                if(!target.roles.has(unmuteRole)){message.channel.send("this user is not muted");return;}
                 target.removeRole(unmuteRole);
                 const unmuteEmbed = new RichEmbed()
                     .setColor('#000fff')
@@ -696,30 +674,146 @@ bot.on('message', message =>{
                 message.channel.send(unmuteEmbed)
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 break;
-
             case "math":
-
                 try{
+                    //get the operation
                     const result = mathjs.evaluate(args.slice(1).join(" "))
+                    //build embed
                     const MathEmbed = new RichEmbed()
                         .setColor('#000fff')
                         .addField(' :blue_circle: Operation ', "`" + args.slice(1).join(" ") + "`")
                         .addField(' :blue_circle: Result' , "`" + result + "`")
+                    //send embed
                     message.channel.send(MathEmbed)
 
                 }catch (err){
+                    //if error send
                     message.channel.send("invalid question type `?help-math` to know more. \n Make sure it's the correct format")
 
                 }
                 break;
+            case "unban":
+
+                //get the user id
+                target = message.content.split(" ")[1]
+                if(!target){message.channel.send("Send a user id"); return;}
+                if(isNaN(target)){message.channel.send("Send a user id"); return;}
+                reason = args.slice(2).join(' ');
+
+                if(!reason){reason = "no reason provided"}
+
+                //seyup the embed
+                const UnbanEmbed = new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle(`Unbanned ${target}`)
+                    .addField(`Unbanned by`, message.member.toString())
+                    .addField(`Reason`, reason)
+                message.channel.guild.unban(target)
+                message.channel.send(UnbanEmbed)
+                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
+
+                break;
+            case "def":
+                message.channel.send("work in progress")
+                return;
+                let dtarget = message.content.split(" ")[1]
+                console.log(dtarget)
+                if(!dtarget){message.channel.send("Send a word you moron"); return;}
+                try {
+                    const definition = dictionary.dtarget
+                    console.log(definition)
+                    message.channel.send(`${dtarget}: ${definition}`)
+                }catch (err){
+                    console.log(err)
+                    message.channel.send("Couldn't find that word")
+                }
+                break;
+            case "music":
+                switch (args[1]) {
+                    case "play":
+                        if (!args[2]) {
+                            message.reply("Please provide a link")
+                            return;
+                        }
+                        if (!message.member.voiceChannel) {
+                            message.channel.send("You must be in a voice channel!")
+                            return;
+                        }
+                        if (!servers[message.guild.id]) servers[message.guild.id] = {
+                            queue: []
+                        }
+                        var server = servers[message.guild.id];
+                        server.queue.push(args[2]);
+                        const musicEmbed = new RichEmbed ()
+                            .setColor('#00000f')
+                            .setTitle(`Added to queue`)
+                            .setDescription(`There's a total of ${server.queue.length} songs in the queue`)
+                        message.channel.send(musicEmbed)
+                        if (!message.guild.voiceConnection) message.member.voiceChannel.join().then(function (connection) {
+                            play(connection, message);
+                        });
+                        break;
+                    case "skip":
+                        var server = servers[message.guild.id];
+
+                        if (server.dispatcher) server.dispatcher.end();
+
+                        break;
+
+                    case "stop":
+                        var server = servers[message.guild.id];
+
+                        if (message.guild.voiceConnection) message.guild.voiceConnection.disconnect();
+                        break;
+                }
+                function play(connection, message) {
+                    var server = servers[message.guild.id];
+                    server.dispatcher = connection.playOpusStream(ytdl(server.queue[0], {
+                        filter: "audioonly",
+                        opusEncoded: true,
+                        highWaterMark: 1<<25
+                    }));
+                    server.dispatcher.setVolume(3);
+                    server.queue.shift();
+                    server.dispatcher.on("end", function () {
+                        if (server.queue[0]) {
+                            play(connection, message);
+                        } else {
+                            connection.disconnect();
+                            message.channel.send("queue ended");
+                        }
+                    });
+                }
+                break;
         }
     }
+
+    //update the message count of the user  Get the row, the message count +1 and update it (sort by message author id)
+    db.get(`SELECT * FROM data WHERE Userid = ?`, [message.author.id], (err, row) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+        if(row === undefined){
+            insertdata.run(message.author.tag, message.author.id, "0", "1")
+        } else {
+            const messageN = row.Messages
+            const levelN = row.level
+            db.run(`UPDATE data SET Messages = ? WHERE userid = ?`, [messageN + 1, message.author.id])
+            if (messageN == levelN * 1000) {
+                db.run(`UPDATE data SET level = ? WHERE userid = ?`, [levelN + 1, message.author.id]);
+                //levels
+                message.channel.send(`Congratulations you leveled up to level ${levelN + 1}`)
+            }
+        }
+    })
 
 })
 //on a person editing a message
 bot.on('messageUpdate', (oldMessage, newMessage) => {
     if(!newMessage.guild){return;}
     if (newMessage.author.bot){return;}
+    if(oldMessage.content.includes("https://www.youtube.com")){return;}
 
 
     const logsChannel = newMessage.guild.channels.find(channel => channel.name === "logs");
@@ -762,7 +856,6 @@ bot.on("messageDelete" , (messageDelete) => {
 
 })
 bot.on("guildMemberAdd", (member) =>{
-
     //get the channel to send theembed
     const logsChannel = member.guild.channels.find(channel => channel.name.includes("logs"));
     const logsChannelID = logsChannel.id;
@@ -780,17 +873,18 @@ bot.on("guildMemberAdd", (member) =>{
     member.guild.channels.get(logsChannelID).send(guildMemberAddEmbed)
 
 })
-
-bot.on("guildDelete", (guild) =>{
-    fs.unlink(`./Databases/${guild.id}.db`, (name) => "")
+bot.on("guildDelete", guild => {
+    fs.unlink(`./Databases/${guild.id}.db`, "")
+    console.log("deleted")
 })
-bot.on("guildCreate", guild => {
+bot.on("guildCreate", async guild => {
     let db  = new sqlite.Database(`./Databases/${guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL, Cases INTEGER NOT NULL, Messages INTEGER NOT NULL)`) // data table : 4 rows
-    db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL )`) //cases table 6 rows
+    db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
+    db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
+
 
     guild.channels.forEach( function (channel) {
-        if(channel.type == "text" && channel.name.includes("general"||"bot"||"staff")){
+        if(channel.type == "text" && channel.name.includes("general"||"bot"||"staff"|| "principal")){
             channel.send("Hey, this is BostenBot, type `?help` to know more about my commands")
             return;
         }else {
@@ -799,7 +893,6 @@ bot.on("guildCreate", guild => {
 
     })
 });
-
 bot.login(token)
 
 
