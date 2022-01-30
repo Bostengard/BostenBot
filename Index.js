@@ -10,7 +10,12 @@ const {RichEmbed} = require('discord.js.old')
 const { reddit } = require('@kindl3d/reddit.js');
 const mathjs = require('mathjs')
 const ytdl = require('discord-ytdl-core')
+const path = require('path')
+const {re, catalan} = require("mathjs");
+const logDir = path.resolve(`logs`)
+const DatabaseDir = path.resolve(`Databases`)
 var servers = {};
+
 
 
 
@@ -20,13 +25,15 @@ var servers = {};
 //global variables
 const bot = new Discord.Client();
 let FileLogDate = moment(new Date()).format("DD MM YYYY")
-let logger = fs.createWriteStream(`./logs/logs${FileLogDate}.txt`, {flags: 'a'})  //data will be preserved //writes the file and creates if it doesnt exist
+let logger = fs.createWriteStream(path.join(logDir, `logs${FileLogDate}.txt`), {flags: 'a'})  //data will be preserved //writes the file and creates if it doesnt exist
 let WriteLine = (line) => logger.write(`\n${line}`);
 let reason = ""
 let target = ""
 let targetID = ""
 let amount = ""
 let cases = ""
+let LogsBool,MusicBool,MathBool,RedditBool,LevelsBool;
+let logsChannel,logsChannelID;
 
 let Bostengard = "https://bostengard.github.io/"
 let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting","shitpostcrusaders","leagueofmemes","apandah", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
@@ -37,6 +44,8 @@ bot.on('ready', () =>{
     amount = ""
     console.log(`Logged in as ${bot.user.tag} at ${FileLogDate}`)
     WriteLine(FileLogDate + `Logged in as ${bot.user.tag}`)
+    bot.user.setActivity("?help for info", "STREAMING")
+
 
 })
 
@@ -48,35 +57,46 @@ bot.on('message', async message =>{
     //update the date
     FileLogDate = moment(new Date()).format("DD MM YYYY hh:mm:ss")
     //create a database and the tables if they don't exist with it
-    let db  = new sqlite.Database(`./Databases/${message.guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // one database per guild
+    let db = new sqlite.Database(path.join(DatabaseDir,`${message.guild.id}.db`) , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // refresh database to avoid errors
         db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
         db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
+        db.run(`CREATE TABLE IF NOT EXISTS settings(LogsBool INTEGER DEFAULT 1, MusicBool INTEGER DEFAULT 1, MathBool INTEGER DEFAULT 1, RedditBool INTEGER DEFAULT 1, LevelsBool INTEGER DEFAULT 1)`)
 
 
-    db = new sqlite.Database(`./Databases/${message.guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // refresh database to avoid errors
+    db = new sqlite.Database(path.join(DatabaseDir,`${message.guild.id}.db`) , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE) // refresh database to avoid errors
+    //get settings
+    db.get(`SELECT * FROM settings`, (err,row) =>{
+        if(err){return;}
+        if(row === undefined){ db.run(`INSERT INTO settings VALUES (?,?,?,?,?)`,[1,1,1,1,1])}
+        try {
+            LogsBool = row.LogsBool
+            MusicBool = row.MusicBool
+            MathBool = row.MathBool
+            RedditBool = row.RedditBool
+            LevelsBool = row.LevelsBool
+        }catch (e) {
+            return;
+        }
+    })
 
-    // create basic database functions
-    let insertdata = db.prepare(`INSERT INTO data VALUES(?,?,?,?)`)
-    let insertcases = db.prepare(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`)
-    let leaderboardquery = `SELECT * FROM data ORDER BY Messages DESC LIMIT 3`
 
 
-    //get the logs channel w/ id
-    const logsChannel = message.guild.channels.find(channel => channel.name.includes("logs"));
-    const logsChannelID = logsChannel.id;
 
     //check if the message is a command
     if (message.content.startsWith(config.prefix)){
-
-        //if theres no log channel send a message and stop
-
-        if(!logsChannel){message.channel.send('There is no logs channel, create a channel with the name "logs" to start using this bot '); return;}
-
+        if(LogsBool == 1) {
+            //get the logs channel w/ id if theres not one send a message and stop
+            try {
+                logsChannel = message.guild.channels.find(channel => channel.name.includes("logs"));
+                logsChannelID = logsChannel.id;
+            }catch (e) {
+                message.channel.send("there's no logs channel, create a channel with name `logs` to continue or disable logs thru `settings LogsBool 0`")
+                return;
+            }
+        }
         //split message
         let args = message.content.substring(config.prefix.length).split(" ")
-
-        // define the standart logging embed
-
+        // define the standart logging embed don't care that logs are disabled or not cuse in case they're disabled it won't be used (more efficient than putting a condition ig)
         const LogEmbed = new RichEmbed()
             .setColor('#0000ff')
             .addField( 'Command', "`" + message.content + "`",true)
@@ -84,9 +104,7 @@ bot.on('message', async message =>{
             .addField("Channel" ,`<#${message.channel.id}>`,true)
             .addField("Message",  message.url )
             .setTimestamp()
-
-        //check what command is it with a switch args
-
+        //check what command is it with a switch of the args[0](first string after config.prefix(the prefix we assigned in the config.json))
         switch (args[0]){
             case "help":
                 const HelpEmbed = new RichEmbed()
@@ -98,12 +116,11 @@ bot.on('message', async message =>{
                     .addField( ' :blue_circle: Mods', "Moderator Commands\n `?help-moderation`",true)
                     .addField( ' :blue_circle: Math', "Math commands\n `?help-math`",true)
                     .addField( ' :blue_circle: Music', "Music commands\n `?help-music`",true)
+                    .addField( ' :blue_circle: Settings', "Bot Settings \n `?help-settings`", true)
                     .setTimestamp()
-
-
-
-                //send message and log everything
+                //send message and log everything if logs are active
                 message.channel.send(HelpEmbed)
+                if(LogsBool == "0"){return;}
                 WriteLine(FileLogDate + "Help " + " || " +  message.author.tag + " || " + message.guild.name)
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping  " + "||" + message.author.tag + "||" + message.guild.name)
@@ -127,8 +144,9 @@ bot.on('message', async message =>{
                     .addField( ':blue_circle: Reset Cases', "Resets a user leaderboard `?reset < mention/ID >`")
                     .setTimestamp()
 
-                //send message and log everything
+                //send message and log everything if logs are enabled
                 message.channel.send(HelpmodEmbed)
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + "Help mod " + " || " +  message.author.tag + " || " + message.guild.name)
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping mods " + "||" + message.author.tag + "||" + message.guild.name)
@@ -146,13 +164,15 @@ bot.on('message', async message =>{
                     .addField(':blue_circle: math', 'solves your maths quations `?math < operation > `')
                     .setTimestamp()
 
-                //send message and log everything
+                //send message and log everything if logs are enabled
                 message.channel.send(HelpUserEmbed)
                 WriteLine(FileLogDate + "Help user" + " || " +  message.author.tag + " || " + message.guild.name)
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Helping users " + "||" + message.author.tag + "||" + message.guild.name)
                 break;
             case "help-music":
+                //check if music is enabled if its not send a mesage and stop
+                if(MusicBool == 0){message.channel.send("This command is disabled in the bot settings");return}
                 //define help embed
                 const HelpMusic = new RichEmbed()
                     .setColor('#38F20A')
@@ -166,7 +186,9 @@ bot.on('message', async message =>{
 
                 break;
             case "help-math":
-
+                //checki f maths is enable in case its not send a message and stop
+                if(MathBool == 0){message.channel.send("this command is disabled in the bot settings"); return;}
+                //define the embed
                 const HelpMathEmbed = new RichEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
@@ -178,10 +200,20 @@ bot.on('message', async message =>{
                     .addField(':blue_circle: Usefull Info', 'Number pi: `pi` Example : ` 1 * pi` \n Degree: `deg` Example: `cos(45 deg)` \n Simplify: `simplify(x)` Example: `simplify(3 + 2 / 4) = "7 / 2 "`')
                     .addField('Official documentation', "[Constants](https://mathjs.org/docs/reference/constants.html) , [Main Page](https://mathjs.org/docs/index.html)")
                     .setTimestamp()
-
                 message.channel.send(HelpMathEmbed)
-
-
+                break;
+            case "help-settings":
+                const HelpSettingsEmbed = new RichEmbed()
+                    .setColor('#38F20A')
+                    .setTitle("Bostenbot Settings")
+                    .setDescription("Usage = `?settings < setting > < amount>` 1(active) 0(inactive)")
+                    .addField(':blue_circle: Logs', "`?settings LogsBool < 0/1 >`")
+                    .addField(':blue_circle: Music', '`?settings MusicBool < 0/1 >`')
+                    .addField(':blue_circle: Math','`?settings MathBool < 0/1 >`')
+                    .addField(':blue_circle: Reddit', '`?settings RedditBool < 0/1 >`')
+                    .addField(':blue_circle: Levels', '`?settings LevelsBool < 0/1 >`')
+                    .setTimestamp()
+                message.channel.send(HelpSettingsEmbed)
                 break;
             case "random":
                 //get the amount and get the random number and check if its an actual number
@@ -198,9 +230,6 @@ bot.on('message', async message =>{
 
                 //send the message and send an embed
                 message.channel.send(RandomNumberEmbed);
-                WriteLine(FileLogDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
-                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
-                console.log(FileLogDate + " Random " + amount + " || " + message.author.tag + " || " + message.guild.name)
                 break;
             case "aboutme":
                 //define the embed
@@ -212,16 +241,10 @@ bot.on('message', async message =>{
                     .addField(':blue_circle: Highest Role', "`" + message.member.highestRole.name+ "`",true)
                     .setThumbnail(message.author.avatarURL)
                     .setTimestamp()
-
-
                 //send message and log
                 message.channel.send(AboutEmbed)
-                WriteLine(FileLogDate + " About me "  + " || " + message.author.tag + " || " + message.guild.name)
-                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
-                console.log(FileLogDate + " About me"  + " || " + message.author.tag + " || " + message.guild.name)
                 break;
             case "delete":
-
                 //get amount
                 amount = message.content.split(" ")[1];
                 //check if its a number and if theres actually something and if its below 100 and permissions
@@ -229,18 +252,16 @@ bot.on('message', async message =>{
                 if (!amount){message.channel.send(" < amount >"); return;}
                 if (amount > 99){message.channel.send("max 99"); return;}
                 if (!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
-
                 //define the embed
                 const DeleteEmbed = new RichEmbed()
                     .setColor('#19ff00')
                     .addField( 'Deleted', amount)
                     .addField( 'Deleted by', message.author.tag)
                     .setTimestamp()
-
-                // delete send and log
-
+                // delete send and log if logs are enabled
                 message.channel.bulkDelete(amount)
                 message.channel.send(DeleteEmbed)
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + " Deleted "  + amount + " || " + message.author.tag + " || " + message.guild.name)
                 bot.channels.get(logsChannelID).send(LogEmbed)
                 console.log(FileLogDate + " Deleted "  + amount +  " || " + message.author.tag + " || " + message.guild.name)
@@ -257,19 +278,20 @@ bot.on('message', async message =>{
                 for (let a = 0; a<amount; a++){
                     message.channel.send(`${amount - a - 1} messages missing`)
                 }
+                if(LogsBool == 0){return;}
+                WriteLine(FileLogDate + " Spammed"  + amount + " || " + message.author.tag + " || " + message.guild.name)
+                bot.channels.get(logsChannelID).send(LogEmbed)
+                console.log(FileLogDate + " Spammed "  + amount +  " || " + message.author.tag + " || " + message.guild.name)
                 break;
             case "kick":
-
-                //get targets info and check unviable option
+                //check permissions
+                if(!message.member.hasPermission("KICK_MEMBERS")){message.channel.send("u cant kick people") ; return;}
+                //get targets info and check unviable options like if theres no target and if it has permission or not
                 target = message.mentions.users.first();
                 if(!target){message.channel.send("specify a user to kick"); return;}
                 targetID = target.toString().replace(/[\\<>@#&!]/g , " ")
                 reason = args.slice(2).join(' ')
-                if(!reason){message.channel.send("specify a reason"); return;}
-
-                //check permissions
-                if(!message.member.hasPermission("KICK_MEMBERS")){message.channel.send("u cant kick people") ; return;}
-
+                if(!reason){reason = "no reason provided"; return;}
                 //define the embed
                 const KickEmbed = new RichEmbed()
                     .setColor('#ff0000')
@@ -277,43 +299,40 @@ bot.on('message', async message =>{
                     .addField(':blue_circle: Reason', '`'+ reason + '`',true)
                     .addField( ':blue_circle: Kicked by', message.author.tag)
                     .setTimestamp()
-
-                //det cases nº data and update id from database
-
-
-                //try to send the message (with try cause user may not accept messages
-                try{target.send("you've been kicked from " + message.guild.name + " Reason : " + reason).catch(console.error)}catch (err){}
+                //try to send the message (with try cause user may not accept messages and it would crash the bot smh)
+                target.send("you've been kicked from " + message.guild.name + " Reason : " + reason).catch(error => "")
                 try{message.guild.members.get(targetID).kick()}catch (err){ console.log(err); message.channel.send(" Error!: couldn't kick"); return;}
 
                 //send embed and log everything
                 message.channel.send(KickEmbed)
-
+                //update databse with new case and ingfo about it
                 db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"kick",moment(Date.now()).format('DD:MM:YYYY'))}
+                    if(row === undefined){
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`,[reason,targetID,target.tag,message.author.tag, message.author.id, "kick",moment(Date.now()).format('DD:MM:YYYY')])
+                    }
+
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "kick",moment(Date.now()).format('DD:MM:YYYY'))
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`,[reason,targetID,target.tag,message.author.tag, message.author.id, "kick",moment(Date.now()).format('DD:MM:YYYY')])
                     }
                 })
-
+                //if logs are enabled log everything
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + " Kicked "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + reason )
                 bot.channels.get(logsChannelID).send(LogEmbed ).catch(console.error)
                 bot.channels.get(logsChannelID).send("kicked " + target.tag + " || " + target.id ).catch(console.error)
                 console.log(FileLogDate + " Kicked "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
-                //get the cases table and put info
-
                 break;
             case "ban":
-
+                //check permissions
+                if(!message.member.hasPermission("BAN_MEMBERS")){message.channel.send("missing permissions"); return;}
                 //get target and info and check unviable option
                 target = message.mentions.users.first();
                 if(!target){message.channel.send("specify a user"); return;}
                 targetID = target.toString().replace(/[\\<>@#&!]/g, "")
                 reason = args.slice(2).join(' ')
                 if(!reason){message.channel.send("specify a reason"); return;}
-                if(!message.member.hasPermission("BAN_MEMBERS")){message.channel.send("missing permissions"); return;}
-
                 //setup the embed
                 const BanEmbed = new RichEmbed()
                     .setColor('#ff0000')
@@ -324,33 +343,36 @@ bot.on('message', async message =>{
 
 
                 // send message and ban
-                try{target.send("you've been banned from " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
-                try{message.guild.members.get(targetID).ban()}catch (err){ console.log(err); message.channel.send(" Error!: couldn't kick"); return;}
+                {target.send("you've been banned from " + message.guild.name + ". Reason : " + reason).catch(error => "")}
+                try{message.guild.members.get(targetID).ban()}catch (err){message.channel.send(" Error!: couldn't Ban"); return;}
                 message.channel.send(BanEmbed);
-
                 // get data fomr cases table and update it
                 db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"ban",moment(Date.now()).format('DD:MM:YYYY'))}
+                    if(row === undefined){
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Ban", moment(Date.now()).format('DD:MM:YYYY')])
+                    }
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "ban",moment(Date.now()).format('DD:MM:YYYY'))
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Ban", moment(Date.now()).format('DD:MM:YYYY')])
                     }
                 })
-                // log everything
+                // log everything if logs are active
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + " Banned "  + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + reason )
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 bot.channels.get(logsChannelID).send("Banned " + target.tag + " || " + target.id ).catch(console.error)
                 console.log(FileLogDate + " Banned "  + target.tag +  " || " + message.author.tag + " || " + message.guild.name + reason )
                 break;
             case "slowmode":
-
-                // get the target info and the amount
+                //cehck permissiins
+                if(!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
+                // get the target info and the amount and check for invalid options
                 amount = message.content.split(" ")[1]
                 if(isNaN(amount)){message.channel.send("thats not a number")}
                 target = message.mentions.channels.first()
                 if(!target){target = message.channel}
-                if(!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
+
 
                 //embed setup
                 const SlowmodeEmbed = new RichEmbed()
@@ -358,25 +380,25 @@ bot.on('message', async message =>{
                     .addField( ':blue_circle: Slowmode changed to', amount + "s")
                     .addField( ':blue_circle: Changed by', message.author.tag)
                     .setTimestamp()
-
                 //set slowmode and send message
                 target.setRateLimitPerUser(amount)
                 target.send(SlowmodeEmbed)
-
+                //log everything if logs arew active
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + " Slowmode changed: " + amount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 console.log(FileLogDate + " Slowmode changed: " + amount + "s" + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
 
                 break;
             case "warn":
-
+                //check permissions
+                if(message.member.hasPermission("KICK_MEMBERS")){message.channel.send("missing permissions"); return;}
                 //get target info
                 target = message.mentions.users.first()
                 if(!target){message.channel.send("mention a user");return;}
                 targetID = target.toString().replace(/[\\<>@#&!]/g, "")
                 reason = args.slice(2).join(' ');
-                if(!reason){message.channel.send("specify a reason");return;}
-                if(message.member.hasPermission("KICK_MEMBERS")){}
+                if(!reason){reason = "no reason provided";}
                 //setup the embed
                 const WarnEmbed = new RichEmbed()
                     .setColor('#ff0000')
@@ -384,21 +406,21 @@ bot.on('message', async message =>{
                     .addField(':blue_circle: Reason', reason,true)
                     .addField(':blue_circle: Warned By', message.author.tag , true)
                     .setTimestamp()
-
-
-                //send message and log everything
-                message.channel.send(WarnEmbed)
-                // get cases and update it
+                // get cases and update it with the info of the case
                 db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,target.tag,message.author.tag,message.author.id,"Warn",moment(Date.now()).format('DD:MM:YYYY'))}
+                    if(row === undefined) {
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Warn", moment(Date.now()).format('DD:MM:YYYY')])
+                    }
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID,target.tag,message.author.tag, message.author.id, "Warn",moment(Date.now()).format('DD:MM:YYYY'))
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Warn", moment(Date.now()).format('DD:MM:YYYY')])
                     }
                 })
-
-                try{target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch()}catch (err){}
+                //send message and log everything
+                message.channel.send(WarnEmbed)
+                target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch(error => "")
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + " Warned: "  + target.tag  + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name + " || " + reason)
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 bot.channels.get(logsChannelID).send("warned " + target.tag + " || " + target.id ).catch(console.error)
@@ -408,13 +430,10 @@ bot.on('message', async message =>{
 
                 break;
             case "serverinfo":
-
                 //get member count
                 let membercount = message.guild.members.filter( member => !member.user.bot).size
                 let onlinemembercount = message.guild.members.filter( member => !member.user.bot && member.presence.status !== "offline").size
-
                 //setup the embed
-
                 const ServerInfoEmbed = new RichEmbed()
                     .setColor("#000fff")
                     .setTitle("Server Info")
@@ -428,8 +447,6 @@ bot.on('message', async message =>{
 
                 //send and log
                 message.channel.send(ServerInfoEmbed)
-
-                bot.channels.get(logsChannelID).send(LogEmbed)
                 break;
             case "cases":
                 amount = 1
@@ -437,9 +454,7 @@ bot.on('message', async message =>{
                 if(!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
                 target = message.mentions.users.first();
                 if(!target){message.channel.send("Specify a user")}
-                target = target.toString().replace(/[\\<>@#&!]/g, "")
-
-
+                targetID = target.toString().replace(/[\\<>@#&!]/g, "")
                 //set primary embed
                 const CasesEmbedRows = new RichEmbed()
                     .setColor('#000fff')
@@ -448,21 +463,15 @@ bot.on('message', async message =>{
                 //get info and send it
                 db.all(`SELECT * FROM cases WHERE UserId = ?`, [target], (err, row) =>{
                     if(err){console.log(err);message.channel.send("error getting data"); return;}
-
                     row.forEach( function (rows){
                         let reasonC = rows.Reason
                         let moderator = rows.ModeratorTag
                         let type = rows.CaseType
                         let date = rows.Date
-
-
                         CasesEmbedRows.addField(`:blue_circle: ${amount}: ${type}`,`Reason:` + "`"+reasonC+"`" +"\n By: `" + moderator + "` \n At: `" + date + "`",true)
                         amount++
-
                     })
-
                     message.channel.send(CasesEmbedRows)
-
                 })
                 break;
             case "leaderboard":
@@ -473,9 +482,7 @@ bot.on('message', async message =>{
                     .setDescription(`This is the top 3 users for ${message.guild.name}`)
                     .setImage(message.guild.avatarURL)
 
-
-
-                //get info
+                //get info of the message author
                 db.get(`SELECT * FROM data WHERE UserId = ?`,[message.author.id], (err, row) =>{
                     if (err) {console.log(err);return;}
                     if (row === undefined) {
@@ -483,31 +490,21 @@ bot.on('message', async message =>{
                     } else {
                         const messageN = row.Messages
                         leaderboardEmbed.addField(":blue_circle: your messages",`you have a total of ${messageN} messages in this server`)
-
-
                     }
-
                 })
                 amount = "1"
-
-                db.all(leaderboardquery, (err, row) =>{
+                //get info of the top 3 by message
+                db.all(`SELECT * FROM data ORDER BY Messages DESC LIMIT 3`, (err, row) =>{
                     if(err){console.log(err);message.channel.send("error getting data"); return;}
-
                     //setup an embed for each person and send it
-
                     row.forEach( function (rows){
-
                         //add a field for every person
                         let messageCount = rows.Messages
                         let User = rows.UserTag
-
                         leaderboardEmbed.addField(`:blue_circle: Top ${amount}`, `${User} with ${messageCount} messages`)
-
                         amount++
-
                     })
                     //send the message
-
                     message.channel.send(leaderboardEmbed)
                 })
 
@@ -515,11 +512,10 @@ bot.on('message', async message =>{
             case "roleinfo":
                 //get the role id to input
                 target = message.content.split(" ")[1]
-
                 if(!target){message.channel.send("send a role id"); return;}
+                if(isNaN(target)){message.channel.send("send a role ID"); return;}
                 //get the role mention
                 const TargetRole = message.guild.roles.find( role => role.id === target)
-
                 //get the embed with the info
                 const RoleEmbed = new RichEmbed()
                     .setColor(TargetRole.hexColor)
@@ -529,15 +525,12 @@ bot.on('message', async message =>{
                     .addField(':blue_circle: ID', "`" + target + "`")
                     .addField(":blue_circle: Color", "`" + TargetRole.hexColor + "`")
                     .addField(":blue_circle: Mebers", "At least " + "`"+ TargetRole.members.size+"`")
-
-
                 //send the embed
                 message.channel.send(RoleEmbed)
-
                 break;
             case "reddit":
-
-
+                //check if reddit module is active
+                if(RedditBool == 0){message.channel.send("This command is disabled"); return;}
                 //get the subreddit
                 var loopamount = 0
                 target = message.content.split(" ")[1]
@@ -546,18 +539,19 @@ bot.on('message', async message =>{
 
                 //get the post with all the data
                 if(target === "random"){const redditamount = Math.floor(Math.random() * subreddits.length); target = subreddits[redditamount]}
-
+                //useless variable that i dont want ot remove
                 if(!amount){amount = "hot"}
                 redditpost(target)
+                //define the fuction of getting the reddit post
                 function redditpost(target) {
                     try {
                         reddit(target, amount).then(data => {
-
                             //if nsfw and the channel is not nsfw dont send anything
                             if (data.nsfw === true && !message.channel.nsfw) {
                                 message.channel.send("no nsfw posts are allowed in this channel")
                                 return;
                             }
+                            //if the image is in the wrong format try again until 5 times
                             if (!data.url.endsWith(".jpg") && !data.url.endsWith(".gif") && !data.url.endsWith(".png") && !data.url.endsWith(".webp")) {
                                 loopamount ++
                                 if(loopamount > 4 ){message.channel.send("couldn't find a post that meets the format requirements"); return;}
@@ -580,7 +574,6 @@ bot.on('message', async message =>{
             case "resetleaderboard":
                 //check permissions
                 if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
-
                 //delete data
                 db.run(`DELETE FROM data`);
                //send message
@@ -589,14 +582,12 @@ bot.on('message', async message =>{
             case "resetcases":
                 //check permissions
                 if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
-
                 //check target
                 target = message.content.split(" ")[1]
                 //check targe
                 if(!target){message.channel.send("send user ID");return;}
                 targetID = target.toString().replace(/[\\<>@#&!]/g , " ")
                 if(isNaN(targetID)){message.channel.send("Error!");return;}
-
                 //delete
                 db.run(`DELETE FROM cases WHERE userid = ${targetID}`)
                 //get the embed
@@ -608,23 +599,21 @@ bot.on('message', async message =>{
                 message.channel.send(ResetCasesEmbed)
                 break;
             case "mute":
-
                 //check permissions
                 if(!message.member.hasPermission("MANAGE_ROLES_OR_PERMISSIONS")){message.channel.send("missing permissions"); return;}
+                //get target and target 2(for embed purposes)
                 target = message.mentions.members.first()
                 const Target2 = message.mentions.users.first()
                 if(!target){message.channel.send("Mention a user"); return;}
                 if(target.hasPermission("MANAGE_ROLES_OR_PERMISSIONS")){message.channel.send("can't mute that member");return;}
                 targetID = target.toString().replace(/[\\<>@#&!]/g, "")
-
-
                 //reason moment
                 reason = args.slice(2).join(' ');
                 if(!reason){reason = "no reason provided"}
                 //get the role
                 const muteRole = message.guild.roles.find(role => role.name === "Muted")
                 if(!muteRole){message.channel.send('Theres no mute role, to use this command create a role with name "Muted"' );return;}
-                //change permissions for all the channels
+                //change permissions for all the channels to make people with taht role stay muted until oblivion
                 message.guild.channels.forEach( function (channel){
                     channel.overwritePermissions(muteRole, {
                         SEND_MESSAGES: false,
@@ -635,13 +624,16 @@ bot.on('message', async message =>{
                 // get cases and update it
                 db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
-                    if(row === undefined){insertcases.run(reason,targetID,Target2.tag,message.author.tag,message.author.id,"Mute", moment(Date.now()).format('DD:MM:YYYY'))}
+                    if(row === undefined){
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY')])
+                        }
                     else {
                         //put another row of info into the database
-                        insertcases.run(reason,targetID, Target2.tag,message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY'))
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY')])
                     }
                 })
 
+                //setup the embed
                 const muteEmbed = new RichEmbed()
                     .setColor('#000fff')
                     .setTitle(`Muted ${message.mentions.users.first().tag}`)
@@ -650,6 +642,8 @@ bot.on('message', async message =>{
 
                 target.addRole(muteRole);
                 message.channel.send(muteEmbed)
+                //log everytihn if logs are active
+                if(LogsBool == 0){return;}
                 WriteLine(FileLogDate + " Muted: " + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 console.log(FileLogDate + " MUTED: " + target.tag + " || " + message.author.tag + " || " + message.guild.name + " || " + message.channel.name)
@@ -672,9 +666,11 @@ bot.on('message', async message =>{
                     .setDescription(`UnMuted by ${message.author.tag} `)
                     .setTimestamp()
                 message.channel.send(unmuteEmbed)
+                if(LogsBool == 0){return;}
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
                 break;
             case "math":
+                if(MathBool == 0){message.channel.send("This command is disabled in the bot settings"); return;}
                 try{
                     //get the operation
                     const result = mathjs.evaluate(args.slice(1).join(" "))
@@ -685,23 +681,20 @@ bot.on('message', async message =>{
                         .addField(' :blue_circle: Result' , "`" + result + "`")
                     //send embed
                     message.channel.send(MathEmbed)
-
                 }catch (err){
                     //if error send
                     message.channel.send("invalid question type `?help-math` to know more. \n Make sure it's the correct format")
-
                 }
                 break;
             case "unban":
-
+                //check permissions
+                if(!message.member.hasPermission("BAN_MEMBERS")){message.channel.send("pebbles can't unban (missing permissions)")}
                 //get the user id
                 target = message.content.split(" ")[1]
                 if(!target){message.channel.send("Send a user id"); return;}
                 if(isNaN(target)){message.channel.send("Send a user id"); return;}
                 reason = args.slice(2).join(' ');
-
                 if(!reason){reason = "no reason provided"}
-
                 //seyup the embed
                 const UnbanEmbed = new RichEmbed()
                     .setColor('#000fff')
@@ -710,8 +703,8 @@ bot.on('message', async message =>{
                     .addField(`Reason`, reason)
                 message.channel.guild.unban(target)
                 message.channel.send(UnbanEmbed)
+                if(LogsBool == 0){return;}
                 bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
-
                 break;
             case "def":
                 message.channel.send("work in progress")
@@ -729,6 +722,7 @@ bot.on('message', async message =>{
                 }
                 break;
             case "music":
+                if(MusicBool == 0 ){message.channel.send("this command is disabled"); return;}
                 switch (args[1]) {
                     case "play":
                         if (!args[2]) {
@@ -785,6 +779,26 @@ bot.on('message', async message =>{
                     });
                 }
                 break;
+            case "settings":
+
+                //check permissions
+                if(!message.member.hasPermission("ADMINISTRATOR")){message.channel.send("missing permissions"); return;}
+                //get target
+                target = message.content.split(" ")[1]
+                if(!target){message.channel.send("select a setting, type `?help-settings` to know more");return;}
+                if(target !== "LogsBool" && target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool"){message.channel.send("Unknown Setting, type `?help-settings` to know more"); return;}
+                amount = message.content.split(" ")[2]
+                if(!amount){message.channel.send("Send a value"); return;}
+                if(amount != 1 && amount != 0){message.channel.send("Send 1(active) or 0(inactive)");return}
+                bot.channels.get(logsChannelID).send(LogEmbed)
+                //setup the embed
+                const settingsEmbed = new RichEmbed()
+                    .setColor('#000fff')
+                    .setTitle('Settings successfully changed')
+                    .setDescription(`${target} is now ${amount}`)
+                db.run(`UPDATE settings SET ${target} = ?`,[amount])
+                message.channel.send(settingsEmbed);
+                break;
         }
     }
 
@@ -795,11 +809,12 @@ bot.on('message', async message =>{
             return;
         }
         if(row === undefined){
-            insertdata.run(message.author.tag, message.author.id, "0", "1")
+            db.run(`INSERT INTO data VALUES(?,?,?,?)`,[message.author.tag,message.author.id,0,1])
         } else {
             const messageN = row.Messages
             const levelN = row.level
             db.run(`UPDATE data SET Messages = ? WHERE userid = ?`, [messageN + 1, message.author.id])
+            if(LevelsBool == 0){return;}
             if (messageN == levelN * 1000) {
                 db.run(`UPDATE data SET level = ? WHERE userid = ?`, [levelN + 1, message.author.id]);
                 //levels
@@ -874,15 +889,16 @@ bot.on("guildMemberAdd", (member) =>{
 
 })
 bot.on("guildDelete", guild => {
-    fs.unlink(`./Databases/${guild.id}.db`, "")
+    fs.unlink(`./Databases/${guild.id}.db`, (name) => "")
     console.log("deleted")
 })
 bot.on("guildCreate", async guild => {
     let db  = new sqlite.Database(`./Databases/${guild.id}.db` , sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
     db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
     db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-
-
+    db.run(`CREATE TABLE IF NOT EXISTS settings(LogsBool INTEGER DEFAULT 1, MusicBool INTEGER DEFAULT 1, MathBool INTEGER DEFAULT 1, RedditBool INTEGER DEFAULT 1, LevelsBool INTEGER DEFAULT 1)`)
+    db.run(`INSERT INTO settings VALUES (?,?,?,?,?)`,[1,1,1,1,1])
+    //check welcome channel and say hallo
     guild.channels.forEach( function (channel) {
         if(channel.type == "text" && channel.name.includes("general"||"bot"||"staff"|| "principal")){
             channel.send("Hey, this is BostenBot, type `?help` to know more about my commands")
@@ -890,7 +906,6 @@ bot.on("guildCreate", async guild => {
         }else {
             return;
         }
-
     })
 });
 bot.login(token)
