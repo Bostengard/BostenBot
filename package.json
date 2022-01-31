@@ -3,6 +3,7 @@
     "@kindl3d/reddit.js": "^1.2.4",
     "@mapbox/node-pre-gyp": "^1.0.8",
     "discord-ytdl-core": "^5.0.4",
+    "discord.js": "^13.6.0",
     "discord.js.old": "^11.6.5",
     "ffmpeg": "^0.0.4",
     "mathjs": "^10.1.0",
