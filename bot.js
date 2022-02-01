@@ -11,7 +11,6 @@ const { reddit } = require('@kindl3d/reddit.js');
 const mathjs = require('mathjs')
 const ytdl = require('discord-ytdl-core')
 const path = require('path')
-const {row} = require("mathjs");
 const logDir = path.resolve(`logs`)
 const DatabaseDir = path.resolve(`Databases`)
 var servers = {};
@@ -23,7 +22,7 @@ let targetID = ""
 let amount = ""
 let cases = ""
 let MusicBool,MathBool,RedditBool,LevelsBool;
-let logsChannel,logsChannelID;
+let logsChannel;
 let Bostengard = "https://bostengard.github.io/"
 let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting","shitpostcrusaders","leagueofmemes","apandah", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
 
@@ -313,8 +312,8 @@ bot.on('message', async message =>{
                 })
                 // log everything if logs are active
                 if(logsChannel){
-                    bot.channels.get(logsChannelID).send(LogEmbed)
-                    bot.channels.get(logsChannelID).send("Banned " + target.tag + " || " + target.id )
+                    logsChannel.send(LogEmbed)
+                    logsChannel.send("Banned " + target.tag + " || " + target.id )
                 }
                 break;
             case "slowmode":
@@ -341,7 +340,7 @@ bot.on('message', async message =>{
                 break;
             case "warn":
                 //check permissions
-                if(message.member.hasPermission("KICK_MEMBERS")){message.channel.send("missing permissions"); return;}
+                if(!message.member.hasPermission("KICK_MEMBERS")){message.channel.send("missing permissions"); return;}
                 //get target info
                 target = message.mentions.users.first()
                 if(!target){message.channel.send("mention a user");return;}
@@ -370,8 +369,8 @@ bot.on('message', async message =>{
                 message.channel.send(WarnEmbed)
                 target.send("you've been Warned in " + message.guild.name + ". Reason : " + reason).catch(error => "")
                 if(logsChannel){
-                    bot.channels.get(logsChannelID).send(LogEmbed)
-                    bot.channels.get(logsChannelID).send("warned " + target.tag + " || " + target.id )
+                    logsChannel.send(LogEmbed)
+                    logsChannel.send("warned " + target.tag + " || " + target.id )
                 }
                 break;
             case "serverinfo":
@@ -397,25 +396,34 @@ bot.on('message', async message =>{
                 amount = 1
                 //check unviable options and format target
                 if(!message.member.hasPermission("MANAGE_MESSAGES")){message.channel.send("missing permissions"); return;}
-                target = message.mentions.users.first();
-                if(!target){message.channel.send("Specify a user")}
-                targetID = target.toString().replace(/[\\<>@#&!]/g, "")
+                //get target
+                target = message.content.split(' ')[1];
+                if(!target){message.channel.send("Specify a user");return}
+
+                if(isNaN(target)){target= target.toString().replace(/[\\<>@#&!]/g, "")}
+
                 //set primary embed
                 const CasesEmbedRows = new RichEmbed()
+                    .setTitle("Cases")
                     .setColor('#000fff')
-                    .setTitle(`This are the cases for ${message.mentions.users.first().tag}`)
-                    .setThumbnail(targetID.avatarURL)
+
                 //get info and send it
                 db.all(`SELECT * FROM cases WHERE UserId = ?`, [target], (err, row) =>{
                     if(err){console.log(err);message.channel.send("error getting data"); return;}
                     row.forEach( function (rows){
+                        //get table info
                         let reasonC = rows.Reason
                         let moderator = rows.ModeratorTag
                         let type = rows.CaseType
                         let date = rows.Date
+                        let Tag = rows.UserTag
+                        //put table info into embed
                         CasesEmbedRows.addField(`:blue_circle: ${amount}: ${type}`,`Reason:` + "`"+reasonC+"`" +"\n By: `" + moderator + "` \n At: `" + date + "`",true)
+                        CasesEmbedRows.setTitle(`Cases for ${Tag}`)
+                        CasesEmbedRows.setDescription(`This user has a total of ${amount} cases`)
                         amount++
                     })
+                    //end the embed
                     message.channel.send(CasesEmbedRows)
                 })
                 break;
@@ -576,11 +584,11 @@ bot.on('message', async message =>{
                 db.get(`SELECT * FROM cases WHERE UserId = ?`, [targetID], (err, row) => {
                     if(err){console.log(err); return;}
                     if(row === undefined){
-                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY')])
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, Target2.tag, message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY')])
                         }
                     else {
                         //put another row of info into the database
-                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, target.tag, message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY')])
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, targetID, Target2.tag, message.author.tag, message.author.id, "Mute", moment(Date.now()).format('DD:MM:YYYY')])
                     }
                 })
 
@@ -614,7 +622,9 @@ bot.on('message', async message =>{
                     .setDescription(`UnMuted by ${message.author.tag} `)
                     .setTimestamp()
                 message.channel.send(unmuteEmbed)
-                bot.channels.get(logsChannelID).send(LogEmbed).catch(console.error)
+                if(logsChannel){
+                    logsChannel.send(LogEmbed)
+                }
                 break;
             case "math":
                 if(MathBool == 0){message.channel.send("This command is disabled in the bot settings"); return;}
@@ -802,7 +812,7 @@ bot.on('message', async message =>{
     })
 })
 bot.on('channelCreate', channel => {
-    const muteRole = channel.guild.roles.find(role => role.name === "Muted")
+    const muteRole = channel.guild.roles.find(role => role.name.toLowerCase() === "muted")
     if(!muteRole){return;}
     channel.guild.channels.forEach( function (channel){
         channel.overwritePermissions(muteRole, {
@@ -819,7 +829,6 @@ bot.on('messageUpdate', (oldMessage, newMessage) => {
 
     const logsChannel = newMessage.guild.channels.find(channel => channel.name === "logs");
     if(!logsChannel){return;}
-    const logsChannelID = logsChannel.id;
     //send embed with info
     if(newMessage.content !== oldMessage){
         const EditedEmbed= new RichEmbed()
@@ -831,17 +840,13 @@ bot.on('messageUpdate', (oldMessage, newMessage) => {
             .addField("Message Link", ` [Message](${newMessage.url})`)
             .addField("Sent by" , `<@${newMessage.author.id}>`)
             .setTimestamp()
-
-
-        bot.channels.get(logsChannelID).send(EditedEmbed).catch(console.error)
-
+        logsChannel.send(EditedEmbed)
     }
 });
 bot.on("messageDelete" , (messageDelete) => {
     if(!messageDelete.guild){return;}
     const logsChannel = messageDelete.guild.channels.find(channel => channel.name === "logs");
     if(!logsChannel){return;}
-    const logsChannelID = logsChannel.id;
     if (!messageDelete.guild) {return;}
     if (messageDelete.author.bot){return;}
     const DeletedEmbed= new RichEmbed()
@@ -851,15 +856,12 @@ bot.on("messageDelete" , (messageDelete) => {
         .addField("Channel", ` in <#${messageDelete.channel.id}>`, true )
         .addField("Sent by" , `<@${messageDelete.author.id}>`)
         .setTimestamp()
-
-    bot.channels.get(logsChannelID).send(DeletedEmbed).catch(console.error)
-
-
+    logsChannel.send(DeletedEmbed)
 })
 bot.on("guildMemberAdd", (member) =>{
     //get the channel to send theembed
     const logsChannel = member.guild.channels.find(channel => channel.name.includes("logs"));
-    const logsChannelID = logsChannel.id;
+    if(!logsChannel){return}
 
     //get the info and put it in the embed
     const guildMemberAddEmbed = new RichEmbed()
@@ -870,9 +872,7 @@ bot.on("guildMemberAdd", (member) =>{
         .addField('ID', "`" + member.id + "`" ,true)
         .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
         .setThumbnail(member.avatarURL)
-
-    member.guild.channels.get(logsChannelID).send(guildMemberAddEmbed)
-
+    logsChannel.send(guildMemberAddEmbed)
 })
 bot.on("guildDelete", guild => {
     fs.unlink(`./Databases/${guild.id}.db`, (name) => "")
