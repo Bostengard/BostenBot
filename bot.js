@@ -124,11 +124,13 @@ bot.on('message', async message =>{
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
                     .setDescription("prefix = ?")
-                    .addField( ' :blue_circle: aboutme', "Shows a full-of-info embed of yourself or in case of mentioning someone of that person `?aboutme < mention >`")
+                    .addField( ' :blue_circle: aboutme', "Shows a full-of-info embed of yourself`?aboutme`")
                     .addField(':blue_circle: leaderboard', 'shows the top 3 users for this server `?leaderboard`')
                     .addField(':blue_circle: Server Info', 'shows the info of the current server `?serverinfo`')
                     .addField(':blue_circle: Role Info', 'shows info of the role mentioned `?roleinfo < ID >`')
                     .addField(':blue_circle: math', 'solves your maths quations `?math < operation > `')
+                    .addField(':blue_circle: Reddit', 'get yourself a meme`?reddit < random/subreddit >`')
+                    .addField(':blue_circle: Music', 'Plays your favourite youtube song`?help-music`')
                     .setTimestamp()
 
                 //send message and log everything if logs are enabled
@@ -743,7 +745,7 @@ bot.on('message', async message =>{
                 //get target
                 target = message.content.split(" ")[1]
                 if(!target){message.channel.send("select a setting, type `?help-settings` to know more");return;}
-                if(target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool"){message.channel.send("Unknown Setting, type `?help-settings` to know more"); return;}
+                if(target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool" && target !== "LevelsBool"){message.channel.send("Unknown Setting, type `?help-settings` to know more"); return;}
                 amount = message.content.split(" ")[2]
                 if(!amount){message.channel.send("Send a value"); return;}
                 if(amount != 1 && amount != 0){message.channel.send("Send 1(active) or 0(inactive)");return}
