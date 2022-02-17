@@ -14,13 +14,13 @@ const { reddit } = require('@kindl3d/reddit.js')
 const mathjs = require('mathjs')
 const ytdl = require('discord-ytdl-core')
 const bot = new Client({intents: allintents})
+
 const ms = require('ms')
 const {re, arg} = require("mathjs");
 var servers = {}
 const { Player } = require('discord-music-player')
 const player = new Player(bot, {
     leaveOnEmpty: true,
-
 })
 //global variables
 let reason,target,target2,target3,amount,amount2,cases,MusicBool,MathBool,RedditBool,LevelsBool,logsChannel;
@@ -827,6 +827,7 @@ bot.on('messageCreate',async message => {
                 }
                 break;
             case "music":
+
                 if(MusicBool == 0){message.reply("This command is disabled in the server settings!"); return;}
                 if(!message.member.voice.channel){message.reply("Your not on a voice channel"); return;}
                 let guildQueue = bot.player.createQueue(message.guild.id)
@@ -836,9 +837,9 @@ bot.on('messageCreate',async message => {
                     .setDescription('Type `?help-music` to know more')
                 switch (args[1]) {
                     case "play":
+                        if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy links are allowed");return;}
                         let queue = bot.player.createQueue(message.guild.id)
                         await queue.join(message.member.voice.channel)
-                        if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy links are allowed");return;}
                         let song = await queue.play(args.slice(2).join(" ")).catch(_ =>{
                             if(!guildQueue){
                                 queue.stop();
@@ -849,9 +850,9 @@ bot.on('messageCreate',async message => {
                         message.reply({embeds: [MusicEmbed]})
                         break;
                     case "playlist":
+                        if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy playlist links are allowed");return;}
                         let queue2 = bot.player.createQueue(message.guild.id)
                         await queue2.join(message.member.voice.channel)
-                        if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy playlist links are allowed");return;}
                         let song2 = await queue2.playlist(args.slice(2).join(" ")).catch(_ =>{
                             if(!guildQueue){
                                 queue2.stop();
@@ -943,11 +944,8 @@ bot.on('messageCreate',async message => {
                     logsChannel.send({embeds: [LogEmbed]})
                 }
                 break;
-
         }
     }
-
-
     db.get(`SELECT * FROM data WHERE Userid = ?`, [message.author.id], (err, row) => {
         if (err) {
             console.log(err);
@@ -968,7 +966,36 @@ bot.on('messageCreate',async message => {
         }
     })
 })
-
+bot.on("messageDelete" , (messageDelete) => {
+    if(!messageDelete.guild){return;}
+    const logsChannel = messageDelete.guild.channels.cache.find(channel => channel.name === "logs");
+    if(!logsChannel){return;}
+    if (!messageDelete.guild) {return;}
+    if (messageDelete.author.bot){return;}
+    const DeletedEmbed= new MessageEmbed()
+        .setColor('#ff0000')
+        .setTitle("Message Deleted")
+        .addField( 'Message Content', "`" + ` ${messageDelete} `+"`", true )
+        .addField("Channel", ` in <#${messageDelete.channel.id}>`, true )
+        .addField("Sent by" , `<@${messageDelete.author.id}>`)
+        .setTimestamp()
+    logsChannel.send({embeds:[DeletedEmbed]})
+})
+bot.on("guildMemberAdd", (member) =>{
+    //get the channel to send theembed
+    const logsChannel = member.guild.channels.find(channel => channel.name.includes("logs"));
+    if(!logsChannel){return}
+    //get the info and put it in the embed
+    const guildMemberAddEmbed = new MessageEmbed()
+        .setColor('#000fff')
+        .setTitle('New Member')
+        .setTitle('A new user has joined the server')
+        .addField('Name', member.toString() ,true)
+        .addField('ID', "`" + member.id + "`" ,true)
+        .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
+        .setThumbnail(member.avatarURL)
+    logsChannel.send({embeds:[guildMemberAddEmbed]})
+})
 bot.on('messageUpdate',(oldMessage,newMessage) => {
     if(!newMessage.guild){return;}
     if(newMessage.author.bot){return;}
@@ -986,5 +1013,28 @@ bot.on('messageUpdate',(oldMessage,newMessage) => {
         .setTimestamp()
     logsChannel.send({embeds:[EditEmbed]})
 })
+bot.on('guildMembersChunk', (members,guild,chunk) => {
+    logsChannel = message.guild.channels.cache.find(channel => channel.name.includes("logs"))
+    if(!logsChannel){
+        return;
+    }
+    let MemberChunk;
+    members.forEach(function (member){
+        MemberChunk = MemberChunk + `\n ${member.toString()} \`${member.id}\``;
+        member.timeout(Math.floor(Math.random() * 10800000) + 3600000,'Raid Prevention muted for 1 hour')
+        member.user.send('Raid Prevention: A lot of users from the same guild has been joining, this measure is for prevention and won\'t be registered in our database').catch(e => console.log('Can\'t send DMs to this user'))
+    })
+    const ChunkEmbed = new MessageEmbed()
+        .setColor('#0000ff')
+        .setTitle('Raid Detected')
+        .setDescription('Members of the same guild have joined recently *this may be a raid*')
+        .addField('Members', MemberChunk)
+        .addField('Info', `Index: \`${chunk.index}\` \n Count: \`${chunk.count}\`\n Nonce: \`${chunk.nonce}\``)
+        .addField('Guild', `Name: ${guild.name} \n ID: \`${guild.id}\``)
+        .setTimestamp()
 
+    logsChannel.send({embeds: [ChunkEmbed]})
+
+
+})
 bot.login(Config.token)
