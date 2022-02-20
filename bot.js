@@ -23,7 +23,7 @@ const player = new Player(bot, {
     leaveOnEmpty: true,
 })
 //global variables
-let reason,target,target2,target3,amount,amount2,cases,MusicBool,MathBool,RedditBool,LevelsBool,logsChannel;
+let reason,target,target2,target3,amount,amount2,cases,MusicBool,MathBool,RedditBool,LevelsBool,logsChannel,DefaultRoleID;
 let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting","shitpostcrusaders","leagueofmemes","apandah", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
 
 bot.on('ready',async () =>{
@@ -95,7 +95,7 @@ bot.on('messageCreate',async message => {
                 message.reply({embeds: [HelpEmbed]})
                 break;
             case "help-moderation":
-                const HelpmodEmbed = MessageEmbed()
+                const HelpmodEmbed = new MessageEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
                     .setDescription("prefix = ?")
@@ -111,6 +111,7 @@ bot.on('messageCreate',async message => {
                     .addField(':blue_circle: cases', "shows the cases for a person and their type`?cases < mention >`")
                     .addField(':blue_circle: Reset leaderboard', "Resets the server leaderboard `?resetleaderboard`")
                     .addField(':blue_circle: Reset Cases', "Resets a user cases `?resetcases < mention >`")
+                    .addField(':blue_circle: mutevoice/unmutevoice', "mutes or unmutes all users in a voice channel that doesnt have permissions \n `?mutevoice / ?unmutevoice`")
                     .setTimestamp()
                 message.reply({embeds: [HelpmodEmbed]});
                 break;
@@ -837,6 +838,7 @@ bot.on('messageCreate',async message => {
                     .setDescription('Type `?help-music` to know more')
                 switch (args[1]) {
                     case "play":
+                        if(!message.content.split(" ")[2]){message.reply("Send a Youtube or spotify link"); return;}
                         if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy links are allowed");return;}
                         let queue = bot.player.createQueue(message.guild.id)
                         await queue.join(message.member.voice.channel)
@@ -850,7 +852,6 @@ bot.on('messageCreate',async message => {
                         message.reply({embeds: [MusicEmbed]})
                         break;
                     case "playlist":
-                        if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy playlist links are allowed");return;}
                         let queue2 = bot.player.createQueue(message.guild.id)
                         await queue2.join(message.member.voice.channel)
                         let song2 = await queue2.playlist(args.slice(2).join(" ")).catch(_ =>{
@@ -913,7 +914,6 @@ bot.on('messageCreate',async message => {
                             MathBool = row.MathBool
                             RedditBool = row.RedditBool
                             LevelsBool = row.LevelsBool
-
                         }catch (e) {
                             return;
                         }
@@ -930,10 +930,18 @@ bot.on('messageCreate',async message => {
                     message.reply({embeds: [settingsviemEmbed]})
                     return;
                 }
-                if(target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool" && target !== "LevelsBool"){message.reply("Unknown Setting, type `?help-settings` to know more"); return;}
+                if(target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool" && target !== "LevelsBool" && target !== "DefaultRoleID"){message.reply("Unknown Setting, type `?help-settings` to know more"); return;}
+                if(target === "DefaultRoleID"){
+                    amount = message.content.split(" ")[2]
+                    amount = message.guild.roles.cache.find(role => role.id == amount)
+                    if(!amount){message.reply("Can't find that role!"); return;}
+                    db.run(`UPDATE settings SET ${target} = ?`, [amount.id])
+                    return;
+                }
                 amount = message.content.split(" ")[2]
                 if(!amount){message.reply("Send a value"); return;}
-                if(amount != 1 && amount != 0){message.reply("Send 1(active) or 0(inactive)"); return;}
+                if(amount <= 0){amount = 0}
+                if(amount >= 1){amount = 1}
                 const settingsEmbed = new MessageEmbed()
                     .setColor('#0000ff')
                     .setTitle('Settings succesfully changed')
@@ -943,6 +951,32 @@ bot.on('messageCreate',async message => {
                 if(logsChannel){
                     logsChannel.send({embeds: [LogEmbed]})
                 }
+                break;
+            case "mutevoice":
+                if(!message.member.permissions.has(Permissions.FLAGS.MUTE_MEMBERS)){
+                    message.reply("Missing permissions")
+                    return;
+                }
+                if(!message.member.voice.channel){message.reply("your not on a voice channel"); return;}
+                let channel = message.member.voice.channel
+                channel.members.forEach(function (member){
+                    if(!member.permissions.has(Permissions.FLAGS.MUTE_MEMBERS)){
+                        member.voice.setMute(true)
+                    }else{return}
+                })
+                message.reply(`Muted all users in ${channel.toString()} sucesfully`)
+                break;
+            case "unmutevoice":
+                if(!message.member.permissions.has(Permissions.FLAGS.MUTE_MEMBERS)){
+                    message.reply("Missing permissions")
+                    return;
+                }
+                if(!message.member.voice.channel){message.reply("your not on a voice channel"); return;}
+                let unchannel = message.member.voice.channel
+                unchannel.members.forEach(function (member){
+                    member.voice.setMute(false)
+                })
+                message.reply(`Unmuted all users in ${unchannel.toString()} sucesfully`)
                 break;
         }
     }
@@ -981,9 +1015,9 @@ bot.on("messageDelete" , (messageDelete) => {
         .setTimestamp()
     logsChannel.send({embeds:[DeletedEmbed]})
 })
-bot.on("guildMemberAdd", (member) =>{
+bot.on("guildMemberAdd", async (member) =>{
     //get the channel to send theembed
-    const logsChannel = member.guild.channels.find(channel => channel.name.includes("logs"));
+    const logsChannel = member.guild.channels.cache.find(channel => channel.name.includes("logs"));
     if(!logsChannel){return}
     //get the info and put it in the embed
     const guildMemberAddEmbed = new MessageEmbed()
