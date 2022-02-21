@@ -5,5 +5,3 @@ Any of this can be toggled of and on by using the `?settings`command, all the in
 ##### This bot now works with the timeout function 
 ##### invite the bot and to see the commands u can type ?help 
 ##### if u want to request new features and/or give any ideas contact me thru discord : Bostengard#4691 and i'll be glad to consider them
-
-#### to invite the bot https://discord.com/api/oauth2/authorize?client_id=920602723232153661&permissions=8&scope=bot
