@@ -261,7 +261,7 @@ bot.on('messageCreate',async message => {
                     return;
                 }
                 if (amount > 99) {
-                    message.reply('Max 99 messages')
+                    return message.reply('Max 99 messages');
                 }
                 //embed moment
                 const DeleteEmbed = new MessageEmbed()
@@ -359,12 +359,17 @@ bot.on('messageCreate',async message => {
                     message.reply('Missing Permission');
                     return;
                 }
-                target = message.mentions.members.first();
-                target2 = message.mentions.users.first();
+                target = message.content.split(" ")[1]
                 if (!target) {
-                    message.reply("Mention a user to kick");
+                    message.reply("Mention a user to Ban");
                     return;
                 }
+                target = target = target.toString().replace(/[\\<>@#&!]/g, "")
+                if(isNaN(target)){
+                    message.reply("Unknown user")
+                }
+                target = message.guild.members.cache.find(x => x.id == target)
+                if(!target){return message.reply("Unknown User"); }
                 reason = args.slice(2).join(" ")
                 if (!reason) {
                     reason = "no reason provided"
@@ -372,7 +377,7 @@ bot.on('messageCreate',async message => {
                 const banEmbed = new MessageEmbed()
                     .setColor('#0000ff')
                     .setTitle(`Ban`)
-                    .addField(`Member Banned`, `\n${target.toString()} \n \`${target2.id}\``, true)
+                    .addField(`Member Banned`, `\n${target.toString()} \n \`${target.id}\``, true)
                     .addField(`Moderator`, `${message.author.toString()} \n \`${message.author.id}\` `, true)
                     .addField(`Reason`, `\`${reason}\``)
                     .setTimestamp()
@@ -383,16 +388,17 @@ bot.on('messageCreate',async message => {
                     message.reply("Can't Ban this user");
                     return
                 }
-                db.get(`SELECT * FROM cases WHERE UserId = ?`, [target2.id], (err, row) => {
+                target = bot.users.cache.find(x => x.id == target)
+                db.get(`SELECT * FROM cases WHERE UserId = ?`, [target.id], (err, row) => {
                     if (err) {
                         console.log(err);
                         return;
                     }
                     if (row === undefined) {
-                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, target2.id, target2.tag, message.author.tag, message.author.id, "Ban", moment(Date.now()).format('DD:MM:YYYY')])
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, target.id, target.tag, message.author.tag, message.author.id, "Ban", moment(Date.now()).format('DD:MM:YYYY')])
                     } else {
                         //put another row of info into the database
-                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, target2.id, target2.tag, message.author.tag, message.author.id, "Ban", moment(Date.now()).format('DD:MM:YYYY')])
+                        db.run(`INSERT INTO cases VALUES(?,?,?,?,?,?,?)`, [reason, target.id, target.tag, message.author.tag, message.author.id, "Ban", moment(Date.now()).format('DD:MM:YYYY')])
                     }
                 })
                 if (logsChannel) {
@@ -1020,6 +1026,7 @@ bot.on("guildMemberAdd", async (member) =>{
     const logsChannel = member.guild.channels.cache.find(channel => channel.name.includes("logs"));
     if(!logsChannel){return}
     //get the info and put it in the embed
+    await fetch(member.avatarURL())
     const guildMemberAddEmbed = new MessageEmbed()
         .setColor('#000fff')
         .setTitle('New Member')
@@ -1027,7 +1034,7 @@ bot.on("guildMemberAdd", async (member) =>{
         .addField('Name', member.toString() ,true)
         .addField('ID', "`" + member.id + "`" ,true)
         .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
-        .setThumbnail(member.avatarURL)
+        .setThumbnail(await fetch(member.avatarURL()))
     logsChannel.send({embeds:[guildMemberAddEmbed]})
 })
 bot.on('messageUpdate',(oldMessage,newMessage) => {
