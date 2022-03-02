@@ -16,14 +16,14 @@ const ytdl = require('discord-ytdl-core')
 const bot = new Client({intents: allintents})
 
 const ms = require('ms')
-const {re, arg} = require("mathjs");
+const {re, arg, row} = require("mathjs");
 var servers = {}
 const { Player } = require('discord-music-player')
 const player = new Player(bot, {
     leaveOnEmpty: true,
 })
 //global variables
-let reason,target,target2,target3,amount,amount2,cases,MusicBool,MathBool,RedditBool,LevelsBool,logsChannel,DefaultRoleID;
+let reason,target,target2,target3,amount,amount2,cases,MusicBool,MathBool,RedditBool,LevelsBool,logsChannel,DefaultRole;
 let subreddits = ["196", "antimeme", "bikinibottomtwitter","dankmemes", "shitposting","shitpostcrusaders","leagueofmemes","apandah", "meme","memes", "whenthe","prequelmemes","terriblefacebookmemes","funny", "okbuddyretard","comedycemetery","wholesomememes","raimimemes","historymemes","comedyheaven"]
 
 bot.on('ready',async () =>{
@@ -53,7 +53,7 @@ bot.on('messageCreate',async message => {
             return;
         }
         if (row === undefined) {
-            db.run(`INSERT INTO settings VALUES (?,?,?,?)`, [1, 1, 1, 1])
+            db.run(`INSERT INTO settings VALUES (?,?,?,?,?)`, [1, 1, 1, 1, 0])
         }
         try {
             MusicBool = row.MusicBool
@@ -79,7 +79,6 @@ bot.on('messageCreate',async message => {
             .setTimestamp()
 
         switch (args[0]) {
-
             case "help":
                 const HelpEmbed = new MessageEmbed()
                     .setColor('#38F20A')
@@ -914,12 +913,13 @@ bot.on('messageCreate',async message => {
                 if(!target){
                     db.get(`SELECT * FROM settings`, (err,row) =>{
                         if(err){return;}
-                        if(row === undefined){ db.run(`INSERT INTO settings VALUES (?,?,?,?)`,[1,1,1,1])}
+                        if(row === undefined){ db.run(`INSERT INTO settings VALUES (?,?,?,?,?)`,[1,1,1,1,0])}
                         try {
                             MusicBool = row.MusicBool
                             MathBool = row.MathBool
                             RedditBool = row.RedditBool
                             LevelsBool = row.LevelsBool
+
                         }catch (e) {
                             return;
                         }
@@ -936,8 +936,8 @@ bot.on('messageCreate',async message => {
                     message.reply({embeds: [settingsviemEmbed]})
                     return;
                 }
-                if(target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool" && target !== "LevelsBool" && target !== "DefaultRoleID"){message.reply("Unknown Setting, type `?help-settings` to know more"); return;}
-                if(target === "DefaultRoleID"){
+                if(target !== "MusicBool" && target !== "MathBool" && target !== "RedditBool" && target !== "LevelsBool" && target !== "defaultRole"){message.reply("Unknown Setting, type `?help-settings` to know more"); return;}
+                if(target === "defaultRole"){
                     amount = message.content.split(" ")[2]
                     amount = message.guild.roles.cache.find(role => role.id == amount)
                     if(!amount){message.reply("Can't find that role!"); return;}
@@ -1062,7 +1062,7 @@ bot.on('guildMembersChunk', (members,guild,chunk) => {
     let MemberChunk;
     members.forEach(function (member){
         MemberChunk = MemberChunk + `\n ${member.toString()} \`${member.id}\``;
-        member.timeout(Math.floor(Math.random() * 10800000) + 3600000,'Raid Prevention muted for 1 hour')
+        member.timeout(Math.floor(Math.random() * 10800000) + 3600000,'Raid Prevention, muted for 1 hour')
         member.user.send('Raid Prevention: A lot of users from the same guild has been joining, this measure is for prevention and won\'t be registered in our database').catch(e => console.log('Can\'t send DMs to this user'))
     })
     const ChunkEmbed = new MessageEmbed()
