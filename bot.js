@@ -53,7 +53,7 @@ bot.on('messageCreate',async message => {
             return;
         }
         if (row === undefined) {
-            db.run(`INSERT INTO settings VALUES (?,?,?,?,?)`, [1, 1, 1, 1, 0])
+            db.run(`INSERT INTO settings VALUES (?,?,?,?)`, [1, 1, 1, 1])
         }
         try {
             MusicBool = row.MusicBool
@@ -232,7 +232,7 @@ bot.on('messageCreate',async message => {
                     .setColor('#0000ff')
                     .setTitle(`User Info ${target3.username}`)
                     .addField('User ID and Mention', ` ID: \`${target}\` \n  Mention:${target2.toString()} \n Tag: ${usertag}`)
-                    .addField('Account creation date', ` \`${moment(target3.createdAt).format("SS:MM:HH DD-MM-YYYY")}\``, true)
+                    .addField('Account creation date', ` \`${moment(target3.createdAt).format("DD-MM-YYYY")}\``, true)
                     .addField('Highest Role', target2.roles.highest.toString())
                     .addField('Roles', userrolemap)
                     .setThumbnail(target3.avatarURL({
@@ -844,29 +844,20 @@ bot.on('messageCreate',async message => {
                 switch (args[1]) {
                     case "play":
                         if(!message.content.split(" ")[2]){message.reply("Send a Youtube or spotify link"); return;}
-                        if(!message.content.split(" ")[2].startsWith("https://www.youtube.com/" || "https://open.spotify.com/")){message.reply("Only youtube or spotifiy links are allowed");return;}
                         let queue = bot.player.createQueue(message.guild.id)
-                        await queue.join(message.member.voice.channel)
-                        let song = await queue.play(args.slice(2).join(" ")).catch(_ =>{
-                            if(!guildQueue){
-                                queue.stop();
-                            }
-                        })
-                        MusicEmbed.setTitle("Play")
-                        MusicEmbed.addField("Added song", `${args.slice(2).join(" ")} has been added to the queue`)
-                        message.reply({embeds: [MusicEmbed]})
-                        break;
-                    case "playlist":
-                        let queue2 = bot.player.createQueue(message.guild.id)
-                        await queue2.join(message.member.voice.channel)
-                        let song2 = await queue2.playlist(args.slice(2).join(" ")).catch(_ =>{
-                            if(!guildQueue){
-                                queue2.stop();
-                            }
-                        })
-                        MusicEmbed.setTitle("Playlist")
-                        MusicEmbed.addField("Added Playlist", `${args.slice(2).join(" ")} has been added to the queue`)
-                        message.reply({embeds: [MusicEmbed]})
+                        try {
+                            await queue.join(message.member.voice.channel)
+                            let song = await queue.play(args.slice(2).join(" ")).catch(_ => {
+                                if (!guildQueue) {
+                                    queue.stop();
+                                }
+                            })
+                            MusicEmbed.setTitle("Play")
+                            MusicEmbed.addField("Added song", `${args.slice(2).join(" ")} has been added to the queue`)
+                            message.reply({embeds: [MusicEmbed]})
+                        }catch (e) {
+                            return message.reply("Wrong Link Format");
+                        }
                         break;
                     case "skip":
                         guildQueue.skip()
@@ -913,7 +904,7 @@ bot.on('messageCreate',async message => {
                 if(!target){
                     db.get(`SELECT * FROM settings`, (err,row) =>{
                         if(err){return;}
-                        if(row === undefined){ db.run(`INSERT INTO settings VALUES (?,?,?,?,?)`,[1,1,1,1,0])}
+                        if(row === undefined){ db.run(`INSERT INTO settings VALUES (?,?,?,?)`,[1,1,1,1])}
                         try {
                             MusicBool = row.MusicBool
                             MathBool = row.MathBool
@@ -1026,7 +1017,7 @@ bot.on("guildMemberAdd", async (member) =>{
     const logsChannel = member.guild.channels.cache.find(channel => channel.name.includes("logs"));
     if(!logsChannel){return}
     //get the info and put it in the embed
-    await fetch(member.avatarURL())
+    await member.fetch()
     const guildMemberAddEmbed = new MessageEmbed()
         .setColor('#000fff')
         .setTitle('New Member')
@@ -1034,7 +1025,11 @@ bot.on("guildMemberAdd", async (member) =>{
         .addField('Name', member.toString() ,true)
         .addField('ID', "`" + member.id + "`" ,true)
         .addField('Created At', moment(member.createdAt).format("YYYY MM DD"))
-        .setThumbnail(await fetch(member.avatarURL()))
+        .setThumbnail(member.avatarURL({
+            format: 'png',
+            dynamic: 'true',
+            size: 2048
+        }) || member.defaultAvatarURL)
     logsChannel.send({embeds:[guildMemberAddEmbed]})
 })
 bot.on('messageUpdate',(oldMessage,newMessage) => {
