@@ -1,5 +1,5 @@
 {
-  "token": "token-here",
-  "prefix": "?"
-
+	"clientId": "ClientIdHere",
+	"guildId": "GuildIdHere",
+	"token": "token-here"
 }
