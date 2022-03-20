@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/DiscordBot10.iml" filepath="$PROJECT_DIR$/.idea/DiscordBot10.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/command-handling.iml" filepath="$PROJECT_DIR$/.idea/command-handling.iml" />
     </modules>
   </component>
 </project>
