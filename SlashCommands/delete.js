@@ -1,5 +1,5 @@
 const { SlashCommandBuilder} = require('@discordjs/builders');
-const { MessageEmbed } = require('discord.js');
+const { MessageEmbed, Permissions} = require('discord.js');
 const path = require('path')
 
 
@@ -9,6 +9,7 @@ module.exports = {
         .setDescription('Deletes a number (max99) of messages')
         .addIntegerOption(option => option.setName('messages').setDescription('the message to be deleted').setRequired(true)),
     async execute(interaction,client) {
+        if(!interaction.member.permissions.has(Permissions.FLAGS.MANAGE_MESSAGES))return interaction.reply({content: "Missing Permissions", ephemeral: true})
         let value = interaction.options.getInteger('messages')
         if(value > 99){return interaction.reply({content: "Max 99 Messages", ephemeral: true})}
 
