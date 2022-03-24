@@ -15,7 +15,7 @@ module.exports = {
                 member.voice.setMute(true)
             }else{return;}
         })
-        interaction.reply({content:"succesfully muted " + channel.toString() + " " + reason,ephemeral:false})
+        interaction.reply({content:"succesfully muted " + channel.toString() + "\n Cause" + reason,ephemeral:false})
 
     },
 };

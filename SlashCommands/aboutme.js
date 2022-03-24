@@ -5,7 +5,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('aboutme')
         .setDescription('Tells you info about you or a person')
-        .addUserOption(option => option.setName('target').setDescription('The person you would like to know more about')),
+        .addUserOption(option => option.setName('target').setDescription('The person you would like to know more about').setRequired(true)),
     async execute(interaction,client) {
         await interaction.deferReply({})
         let value = interaction.options.getUser('target')
