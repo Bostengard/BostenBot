@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 const path = require('path')
 const { Client, Collection, Intents, MessageEmbed} = require('discord.js');
-const token  = require(path.resolve('./config.json')).token;
+const token  = require(path.resolve('./Config.json')).token;
 const { Player } = require('discord-music-player')
 const moment = require('moment')
 const client = new Client({ intents: new Intents(32767) });
