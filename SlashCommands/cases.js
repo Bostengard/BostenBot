@@ -1,5 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { MessageEmbed, Permissions} = require('discord.js');
+const { MessageEmbed, Permissions, MessageActionRow, MessageButton,} = require('discord.js');
 const path = require("path");
 const sqlite = require('sqlite3').verbose()
 
@@ -9,29 +9,64 @@ module.exports = {
         .setDescription('Shows all the cases for a user')
         .addUserOption(option => option.setName('user').setDescription('Who would you like to investigate').setRequired(true)),
     async execute(interaction,client) {
-        await interaction.deferReply({})
-        if(!interaction.member.permissions.has(Permissions.FLAGS.MODERATE_MEMBERS)) return  interaction.editReply({content: "missing permissions"})
-        let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-        db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-        db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-        db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
+        if(!interaction.member.permissions.has(Permissions.FLAGS.MODERATE_MEMBERS)) return  interaction.Reply({content: "missing permissions"})
+        client.CreateDatabase(interaction.guild.id)
+        let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
+
+        const BackID = "back"
+        const ForwardID = `forward`
+        const BackButton = new MessageButton({
+            style: 'PRIMARY',
+            label: 'Back',
+            emoji: '⬅️',
+            customId: BackID
+        })
+        const ForwardButton = new MessageButton({
+            style: 'PRIMARY',
+            label: 'Forward',
+            emoji: '➡️',
+            customId: ForwardID
+        })
+
         const user = interaction.options.getUser('user')
-        await user.fetch()
-        const embed = new MessageEmbed()
-            .setColor('#0000ff')
-            .setTitle('Cases')
-            .setDescription('This user has no cases')
 
         await db.all(`SELECT * FROM cases WHERE UserID = ?`,[user.id], async (err,row) =>{
-            if(err){return interaction.editReply({content:"There has been an error while executing that command"})}
-            let amount = 1
-            await row.forEach(function (row){
-                embed.addField(`Case ${amount}: ${row.CaseType}`, `Reason: \`${row.Reason}\`\nBy: ${row.ModeratorTag}\nAt: \`${row.Date}\``,true)
-                embed.setDescription('this user has a total of ' + amount + " cases")
-                console.log(row)
-                amount++
+            if(err){interaction.editReply('An error happened *(cry about it)*')}
+            let gEmbed = async (start) =>{
+                const current = row.slice(start,start + 7)
+                return new MessageEmbed({
+                    title: `Showing ${user.tag}'s cases`,
+                    fields: await Promise.all(
+                        current.map(async punishment =>({
+                            name: `**${punishment.CaseType}**`,
+                            value: `Reason: ${punishment.Reason}\nBy: ${punishment.ModeratorTag}\n At: ${punishment.Date}`
+                        }))
+                    ),
+                })
+                    .setFooter({text:`Viewing Cases ${start + 1}-${start + current.length} out of ${row.length})`})
+            }
+
+            const canFitOnOnePage = row.length <= 10
+            const embedMessage =  await interaction.reply({embeds: [await gEmbed(0)], components: canFitOnOnePage ? [] : [new MessageActionRow({components: [ForwardButton]})], fetchReply: true})
+
+            if(canFitOnOnePage) return;
+
+            const collector = embedMessage.createMessageComponentCollector({filter: ({user}) => user.id === interaction.user.id})
+
+            let currentIndex = 0;
+
+            collector.on('collect', async interaction => {
+                interaction.customId === BackID ? (currentIndex -= 10) : (currentIndex += 10)
+                await interaction.update({
+                    embeds: [await gEmbed(currentIndex)],
+                    components: [new MessageActionRow({
+                        components: [
+                            ...(currentIndex ? [BackButton] : []),
+                            ...(currentIndex + 10 < row.length ? [ForwardButton] : [])
+                        ]
+                    })]
+                })
             })
-            return interaction.editReply({embeds:[embed]})
 
         })
 

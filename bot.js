@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const path = require('path')
-const { Client, Collection, Intents, MessageEmbed} = require('discord.js');
+const { Client, Collection, Intents, MessageEmbed, MessageAttachment} = require('discord.js');
 const token  = require(path.resolve('./Config.json')).token;
 const { Player } = require('discord-music-player')
 const moment = require('moment')
@@ -8,26 +8,40 @@ const client = new Client({ intents: new Intents(32767) });
 const sqlite = require('sqlite3').verbose()
 const player = new Player(client, {
 	leaveOnEmpty:true,
-	deafenOnJoin:true,
 	timeout: 1000,
 })
+
+const Canvas = require('canvas')
+const { CreateDatabase } = require(path.resolve('./Functions/CreateDatabase.js'))
+client.CreateDatabase = CreateDatabase
 client.player = player
-//setting up slash commands
 client.commands = new Collection();
 const commandFiles = fs.readdirSync(path.resolve('./SlashCommands')).filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
 	const command = require(path.resolve(`./SlashCommands/${file}`));
 	client.commands.set(command.data.name, command);
 }
-client.once('ready', () => {
+client.once('ready', async () => {
 	console.log('Ready!');
+	const DatabasesArray = fs.readdirSync(path.resolve('./Databases'))
+	let GuildArray = []
+	await client.guilds.fetch()
+	client.guilds.cache.forEach(function (guild){
+		GuildArray.push(`${guild.id}.db`)
+	})
+	DatabasesArray.forEach((database) =>{
+		if(!GuildArray.includes(database)){
+			fs.unlinkSync(path.join(path.resolve('./databases/'), `${database}`))
+			console.log(`Removed ${database}.db`)
+		}
+	})
+
 });
 client.on('interactionCreate', async interaction => {
+	CreateDatabase(interaction.guild.id)
 	if (!interaction.isCommand()) return;
 	const command = client.commands.get(interaction.commandName);
 	if (!command) return;
-
-
 	try {
 		await command.execute(interaction,client);
 	} catch (error) {
@@ -40,10 +54,8 @@ client.on('messageCreate', async message => {
 	if(message.author.bot)return;
 	if(!message.guild) return;
 	if(message.webhookId) return;
-	let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${message.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-	db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-	db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-	db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
+	CreateDatabase(message.guild.id)
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${message.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	await db.get(`SELECT * FROM data WHERE UserID = ${message.author.id}`, async (err,row) => {
 		if(err){
 			return console.log(err);
@@ -57,12 +69,12 @@ client.on('messageCreate', async message => {
 					let ID;
 					await db.get(`SELECT * FROM ServerSettings`, async (err,row) =>{
 						if(err) return;
-						if(row === undefined){return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`,[0,0,0,0])}
+						if(row === undefined){return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])}
 						ID = row.WelcomeChannel
 						try{
 							await message.guild.channels.fetch(`${ID}`)
 						}catch{
-							return message.channel.send({content: `Congratulations ${message.author.toString()} you reached level ${i +1}!`})
+							return;
 						}
 						let channel = await message.guild.channels.cache.get(ID)
 						channel.send({content: `Congratulations ${message.author.toString()} You reached Level ${i+1}!`})
@@ -74,7 +86,7 @@ client.on('messageCreate', async message => {
 	await db.get(`SELECT * FROM ServerSettings`, async (err,row) => {
 		if(err) return;
 		if(row === undefined){
-			db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`, [0,0,0,0])
+			db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
 		}
 	})
 
@@ -85,15 +97,13 @@ client.on('messageUpdate',async(oldMessage,newMessage) => {
 	}
 	if(!newMessage.guild){return;}
 	if(oldMessage.content.includes("https")){return;}
-	let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${newMessage.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-	db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-	db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-	db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
+	CreateDatabase(newMessage.guild.id);
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
 		console.log(row)
-		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`,[0,0,0,0])
+		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
 
 		const ID = row.LogsChannel
 		try{
@@ -122,15 +132,13 @@ client.on('messageUpdate',async(oldMessage,newMessage) => {
 client.on('messageDelete', async messageDelete =>{
 	if(messageDelete.author.bot){return;}
 	if(!messageDelete.guild){return;}
-	let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${messageDelete.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-	db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-	db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-	db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
+	CreateDatabase(messageDelete.guild.id)
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${messageDelete.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
 		console.log(row)
-		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`,[0,0,0,0])
+		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
 
 		const ID = row.LogsChannel
 		try{
@@ -155,15 +163,12 @@ client.on('messageDelete', async messageDelete =>{
 	})
 })
 client.on('messageDeleteBulk', async (messages) =>{
-	let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${messages.first().guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-	db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-	db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-	db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
-
+	CreateDatabase(messages.first().guild.id)
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${messages.first().guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
 		let logsChannel;
-		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`,[0,0,0,0])
+		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
 		const ID = row.LogsChannel;
 		try {
 			await messages.first().guild.channels.fetch(`${ID}`)
@@ -189,21 +194,31 @@ client.on('messageDeleteBulk', async (messages) =>{
 	})
 
 })
+const applyText = (canvas, text) => {
+	const context = canvas.getContext('2d');
+	let fontSize = 70;
+
+	do {
+		context.font = `${fontSize -= 10}px Poppins`;
+	} while (context.measureText(text).width > canvas.width - 300);
+
+	return context.font;
+};
 client.on('guildMemberAdd', async member =>{
-	let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${member.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-	db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-	db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-	db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
+	CreateDatabase(member.guild.id)
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${member.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let role;
 	let logsChannel;
 	let welcomeChannel
 	await member.guild.roles.fetch()
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
-		if(row === undefined){db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`,[0,0,0,0])}
+		if(row === undefined){return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])}
 		const roleId = row.WelcomeRole
 		const ID = row.LogsChannel;
 		const WelcomeID = row.WelcomeChannel
+		const image = row.WelcomeImage
+
 		//get the logschannel and send message
 		if(ID !== 0){
 			try{await member.guild.channels.fetch(`${ID}`)}catch{
@@ -223,14 +238,14 @@ client.on('guildMemberAdd', async member =>{
 		if(roleId !== 0){
 			//get the role
 			try{await  member.guild.roles.fetch(`${roleId}`)}catch {
-
+				console.log(e)
 			}
 			role = await member.guild.roles.cache.get(roleId)
 			//add role
 			try{
 				await member.roles.add(role)
-			}catch{
-
+			}catch(e){
+				console.log(e)
 			}
 		}
 		if(WelcomeID !== 0){
@@ -239,7 +254,42 @@ client.on('guildMemberAdd', async member =>{
 
 			}
 			welcomeChannel = await member.guild.channels.cache.get(WelcomeID)
-			try{await welcomeChannel.send(`${member.toString()} welcome to ${member.guild.name}!`)}catch{
+			try{
+				const canvas = Canvas.createCanvas(700, 250);
+				const context = canvas.getContext('2d');
+				let background;
+				try{
+					background = await Canvas.loadImage(image);
+				}catch(e) {
+					background = await Canvas.loadImage('./Background.png')
+				}
+
+				context.drawImage(background, 0, 0, canvas.width, canvas.height);
+
+				context.strokeStyle = '#0099ff';
+				context.strokeRect(0, 0, canvas.width, canvas.height);
+
+				context.font = '28px Poppins';
+				context.fillStyle = '#ffffff';
+				context.fillText('Welcome!', canvas.width / 2.5, canvas.height / 3.5);
+
+				context.font = applyText(canvas, `${member.displayName}!`);
+				context.fillStyle = '#ffffff';
+				context.fillText(`${member.displayName}!`, canvas.width / 2.5, canvas.height / 1.8);
+
+				context.beginPath();
+				context.arc(125, 125, 100, 0, Math.PI * 2, true);
+				context.closePath();
+				context.clip();
+
+				const avatar = await Canvas.loadImage(member.user.displayAvatarURL({ format: 'jpg' }));
+				context.drawImage(avatar, 25, 25, 200, 200);
+
+				const attachment = new MessageAttachment(canvas.toBuffer(), 'profile-image.png');
+
+				await welcomeChannel.send({content: `${member.toString()} welcome to ${member.guild.name}!`,files: [attachment]})
+			}
+			catch (e){
 			}
 		}
 
@@ -249,19 +299,21 @@ client.on('guildMemberAdd', async member =>{
 	})
 })
 client.on('guildMemberRemove', async member =>{
-	let db = new sqlite.Database(path.join(path.resolve('./databases/'), `${member.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-	db.run(`CREATE TABLE IF NOT EXISTS data(UserTag TEXT NOT NULL, UserID INTEGER NOT NULL,  Messages INTEGER NOT NULL, level INTEGER NOT NULL)`) // data table : 4 rows
-	db.run(`CREATE TABLE IF NOT EXISTS cases(Reason TEXT NOT NULL, UserID INTEGER NOT NULL , UserTag TEXT NOT NULL, ModeratorTag TEXT NOT NULL, ModeratorID INTEGER NOT NULL, CaseType TEXT NOT NULL , Date TEXT NUT NULL)`)
-	db.run(`CREATE TABLE IF NOT EXISTS ServerSettings(WelcomeChannel VARCHAR(64),LogsChannel VARCHAR(64),WelcomeRole VARCHAR(64), LevelChannel VARCHAR(64))`)
+	CreateDatabase(member.guild.id)
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${member.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) => {
 		if (err) return;
 		console.log(row)
-		if (row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`, [0, 0, 0, 0])
+		if (row === undefined) return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
 
 		const ID = row.LogsChannel
+		try{
+			await member.guild.channels.fetch(`${ID}`)
+		}catch {
+			return
+		}
 
-		await member.guild.channels.fetch(`${ID}`)
 		logsChannel = await member.guild.channels.cache.get(ID)
 		console.log(logsChannel)
 		const embed = new MessageEmbed()
@@ -275,5 +327,11 @@ client.on('guildMemberRemove', async member =>{
 		}
 	})
 
+})
+client.on('guildCreate', async guild =>{
+	CreateDatabase(guild.id)
+})
+client.on('guildDelete', async guild =>{
+	fs.unlinkSync(path.join(path.resolve('./Databases/'), `${guild.id}.db`))
 })
 client.login(token);
