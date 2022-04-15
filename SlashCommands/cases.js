@@ -9,7 +9,7 @@ module.exports = {
         .setDescription('Shows all the cases for a user')
         .addUserOption(option => option.setName('user').setDescription('Who would you like to investigate').setRequired(true)),
     async execute(interaction,client) {
-        if(!interaction.member.permissions.has(Permissions.FLAGS.MODERATE_MEMBERS)) return  interaction.Reply({content: "missing permissions"})
+        if(!interaction.member.permissions.has(Permissions.FLAGS.MODERATE_MEMBERS)) {return  interaction.reply({content: "missing permissions",ephemeral: true})}
         client.CreateDatabase(interaction.guild.id)
         let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 
@@ -31,7 +31,7 @@ module.exports = {
         const user = interaction.options.getUser('user')
 
         await db.all(`SELECT * FROM cases WHERE UserID = ?`,[user.id], async (err,row) =>{
-            if(err){interaction.editReply('An error happened *(cry about it)*')}
+            if(err){return interaction.editReply('An error happened *(cry about it)*')}
             let gEmbed = async (start) =>{
                 const current = row.slice(start,start + 7)
                 return new MessageEmbed({

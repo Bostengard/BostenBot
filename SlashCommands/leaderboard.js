@@ -7,7 +7,6 @@ module.exports = {
         .setName('leaderboard')
         .setDescription('Leaderboard of The server!'),
     async execute(interaction,client) {
-        await interaction.deferReply({})
         client.CreateDatabase(interaction.guild.id)
         let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
         await interaction.guild.fetch()
@@ -19,7 +18,7 @@ module.exports = {
 
         await db.get(`SELECT * FROM data WHERE UserID = ?`, [interaction.user.id], async (err,row) =>{
             if(err){return interaction.reply({content:"There was an error getting the leaderboard", ephemeral: true})}
-            if(row === undefined){return interaction.reply}
+            if(row === undefined){return interaction.reply(`Try again!`)}
             embed.setDescription('you have a total of ' + row.Messages + " messages")
         })
         await db.all(`SELECT * FROM data ORDER BY Messages DESC LIMIT 3`, async (err,row) => {

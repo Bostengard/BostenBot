@@ -13,7 +13,9 @@ module.exports = {
         channel.members.forEach(function (member){
             if(!member.permissions.has(Permissions.FLAGS.MUTE_MEMBERS)){
                 member.voice.setMute(true)
-            }else{return;}
+            }else{
+
+            }
         })
         interaction.reply({content:"succesfully muted " + channel.toString() + "\n Cause" + reason,ephemeral:false})
 

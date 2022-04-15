@@ -11,7 +11,10 @@ module.exports = {
         let channel = interaction.member.voice.channel;
         if(!channel){return interaction.reply({content:"U are not on a voice channel", ephemeral:true})}
         channel.members.forEach(function (member){
-            member.voice.setMute(false)
+            try{
+                member.voice.setMute(false)
+            }catch{}
+
         })
         interaction.reply({content:"succesfully muted " + channel.toString() + " " + reason,ephemeral:false})
 

@@ -23,8 +23,8 @@ module.exports = {
         if(!interaction.member.permissions.has(Permissions.FLAGS.ADMINISTRATOR)){ interaction.reply({content:'Missing Permissions', ephemeral:true})}
         client.CreateDatabase(interaction.guild.id)
         let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
-        let settingRaw = interaction.options.getString('setting')
         let setting = interaction.options.getString('setting')
+        let settingRaw = interaction.options.getString('setting')
         if(setting === "welcome-channel"){
             setting = "WelcomeChannel"
         }else if (setting === 'welcome-role'){

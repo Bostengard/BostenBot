@@ -54,7 +54,7 @@ module.exports = {
         let channel;
         db.get(`SELECT * FROM ServerSettings`, async (err,row) =>{
             if(err) return interaction.reply({content: "There was an error while executing the command",ephemeral: true})
-            if(row === undefined) return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?)`,[0,0,0,0])
+            if(row === undefined) return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
             ID = row.LogsChannel
             try{
                 await interaction.guild.channels.fetch(`${ID}`)
