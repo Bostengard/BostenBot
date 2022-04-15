@@ -22,7 +22,7 @@ for (const file of commandFiles) {
 	client.commands.set(command.data.name, command);
 }
 client.once('ready', async () => {
-	console.log('Ready!');
+	console.log('Bostenbot Ready!');
 	const DatabasesArray = fs.readdirSync(path.resolve('./Databases'))
 	let GuildArray = []
 	await client.guilds.fetch()
