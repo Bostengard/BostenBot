@@ -14,8 +14,7 @@ module.exports = {
                 .setTitle(`${mathjs.evaluate(operation)}`)
             return interaction.reply({embeds: [embed]})
         }catch (e){
-            console.log(e)
-            return interaction.reply({content:'Incorrect operation Syntax \n \n`/help math` or `?help-math` for more info',ephemeral: true})
+            return interaction.reply({content:'Incorrect operation Syntax \n \n`/help math` for more info',ephemeral: true})
         }
     },
 };

@@ -63,7 +63,6 @@ module.exports = {
             if(row === undefined) return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
             ID = row.LogsChannel
             try{
-                await interaction.guild.channels.fetch(`${ID}`)
                 channel  = await interaction.guild.channels.cache.get(ID)
                 channel.send({embeds: [logEmbed]})
             }

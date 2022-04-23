@@ -13,65 +13,57 @@
                     .addChoice('music', 'music')
                     .addChoice('settings', 'settings')),
         async execute(interaction,client) {
-            console.log(interaction.commandName)
+
+            await client.user.fetch
             const value = interaction.options.getString('module')
             if(!value) {
                 const embed = new MessageEmbed()
                     .setColor('#38F20A')
-                    .setTitle("BostenBot")
+                    .setTitle("Bostenbot")
                     .setURL('https://bostengard.github.io/BostenBot/index.html')
-                    .setDescription("prefix = ?")
-                    .addField(' :blue_circle: user', "`/help user`\n `?help-user`", true)
-                    .addField(' :blue_circle: mods', "`/help moderation`\n `?help-moderation`", true)
-                    .addField(' :blue_circle: math', "`/help math`\n `?help-math`", true)
-                    .addField(' :blue_circle: music', "`/help music`\n `?help-music`", true)
-                    .addField(' :blue_circle: settings', "`/help settings` \n `?help-settings`", true)
+                    .setDescription("SlashCommands!")
+                    .addField('Help Subcommands', `\`help user\`:\n Shows info for the commands that users without any permission can execute \n\n \`help moderation\`:\n Shows info for the commands that users with elevated permissions can execute \n\n  \`help math\`: \n Shows help for the math command\n\n \`help music\`\n Shows help for the music commands\n\n \`help settings\`: \n Shows help of the setting commands `, true)
                     .setTimestamp()
+                    .setFooter({text: "bot created by Bostengard#4691",iconURL: client.user.avatarURL({format: "jpg",size:2048,dynamic: true}) || client.user.defaultAvatarURL})
                 return await interaction.reply({embeds: [embed], ephemeral:false})
             } else if (value.toLowerCase() === "user"){
                 const embed = new MessageEmbed()
                     .setColor('#38F20A')
-                    .setTitle("Lord Bostengard's Commands")
-                    .setDescription("prefix = ?")
-                    .addField(' :blue_circle: aboutme', "`/aboutme`\n`?aboutme`", true)
-                    .addField(' :blue_circle: random', "`/random [number]`\n`?random [number]`",true)
-                    .addField(':blue_circle: leaderboard', '`/leaderboard`\n`?leaderboard`',true)
-                    .addField(':blue_circle: Server Info', '`/serverinfo`\n`?serverinfo`',true)
-                    .addField(':blue_circle: Role Info', '`/roleinfo [roleID]`\n`?roleinfo [RoleID]`',true)
-                    .addField(':blue_circle: math', '`/math [operation] `\n`?math [operation] `',true)
-                    .addField(':blue_circle: Reddit', '`/reddit [subreddit/none]`\n`?reddit [subreddit/none]`',true)
-                    .addField(':blue_circle: Music', '`/help music`\n`?help-music`',true)
+                    .setTitle("User Commands!")
+                    .setDescription(`\`aboutme\`: Shows info of a user\n \`random\`: says a random number \n \`leaderboard\`: Shows a message leaderboard of the server\n \`serverinfo\`: shows info of the server\n \`roleinfo\`: shows info for a role\n \`math\` resolves ur math operations\n \`reddit\`: searches a meme on reddit or on a specific subreddit of your choice\n`)
                     .setTimestamp()
+                    .setFooter({text: "bot created by Bostengard#4691",iconURL: client.user.avatarURL({format: "jpg",size:2048,dynamic: true}) || client.user.defaultAvatarURL})
                 return await interaction.reply({embeds: [embed], ephemeral: false})
             }else if (value.toLowerCase() === "moderation"){
                 const embed = new MessageEmbed()
                     .setColor('#38F20A')
-                    .setTitle("Lord Bostengard's Commands")
-                    .setDescription("prefix = ?")
-                    .addField(':blue_circle: delete', "`/delete [quantity]`\n`?delete [quantity]`",true)
-                    .addField(':blue_circle: warn', "`/warn [mention][reason]`\n`?warn [mention][reason]`",true)
-                    .addField(':blue_circle: kick', "`/kick [mention/ID][reason]`\n`?kick [mention][reason]`",true)
-                    .addField(':blue_circle: Mute', "`/mute [mention/ID][reason][time(1min)]`\n`?mute [mention][reason][time(1min)]`",true)
-                    .addField(':blue_circle: UnMute', "`/unmute [mention/ID]`\n`?unmute [mention/ID]`",true)
-                    .addField(':blue_circle: ban', "`/ban [mention/ID][reason]`\n`?ban [mention/ID][reason]`",true)
-                    .addField(':blue_circle: unban', "`/unban [mention][reason]`\n`?unban [mention][reason]`",true)
-                    .addField(':blue_circle: slowmode', "`/slowmode [amount][channel]`\n`?slowmode [amount][channel]`",true)
-                    .addField(':blue_circle: cases', "`/cases [mention/ID]`\n`?cases [mention/ID]`",true)
-                    .addField(':blue_circle: Reset leaderboard', "`/resetleaderboard`\n`?resetleaderboard`",true)
-                    .addField(':blue_circle: Reset Cases', "`/resetcases [mention]`\n`?resetcases [mention]`",true)
-                    .addField(':blue_circle: mutevoice/unmutevoice', "`?/mutevoice` \n `?/unmutevoice`",true)
+                    .setTitle("Moderation Commands!")
+                    .setDescription(`\`delete\`: deletes an amount of messages
+                                     \`warn\`: warns a user
+                                     \`kick\`: kicks a user
+                                     \`mute\`: mutes a user for a certain amount of time
+                                     \`unmute\`: unmutes a mute user
+                                     \`ban\`: bans a user
+                                     \`unban\`: unbans a user
+                                     \`slowmode\`: changes the slowmode on a channel
+                                     \`cases\`: shows a users cases
+                                     \`resetcases\`: resets the cases for a user
+                                     \`resetleaderboard\`:resets the server leaderboard
+                                     \`mute/unmutevoice\`: mutes/unmutes a voice channel
+                                     \`serverconfig\`: shows the current server configuration
+                                     \`poll\`: creates a poll of up to 10 options`)
+                    .setFooter({text: "bot created by Bostengard#4691",iconURL: client.user.avatarURL({format: "jpg",size:2048,dynamic: true}) || client.user.defaultAvatarURL})
                     .setTimestamp()
                 return await interaction.reply({embeds: [embed], ephemeral: false})
             } else if(value.toLowerCase() === "math"){
                 const embed = new MessageEmbed()
                     .setColor('#38F20A')
-                    .setTitle("Lord Bostengard's Commands")
-                    .setDescription("Usage = `?math < operation>`")
-                    .addField(' :blue_circle: Basic Operations', "Plus: `x + y` Minus: `x - y` Multiply: `x * y` Divide: `X / y`  ")
-                    .addField(':blue_circle: Functions and constants', 'Round: `round( x , < decimals to round >)` \n Atan2:  `atan2(x,y)` \n Logarithm: `log(x)` \n Power: `pow( < base >, < power >` \n Square root: `sqrt(x)` \n Derivative: `derivative( x , y )`')
-                    .addField(':blue_circle: Unit change', ' `x < initial > to < final >` Example: `?math 10 inch to cm`')
-                    .addField(':blue_circle: Other Operations', 'Cos: `cos(x)` \n Tan: `tan(x)` \n Determinant: `det([matrix values])` Example: `det([-1, 2; 3, 1])` ')
-                    .addField(':blue_circle: Usefull Info', 'Number pi: `pi` Example : ` 1 * pi` \n Degree: `deg` Example: `cos(45 deg)` \n Simplify: `simplify(x)` Example: `simplify(3 + 2 / 4) = "7 / 2 "`')
+                    .setTitle("Math Commands")
+                    .addField('Basic Operations', "Plus: `x + y` Minus: `x - y` Multiply: `x * y` Divide: `X / y`  ")
+                    .addField('Functions and constants', 'Round: `round( x , < decimals to round >)` \n Atan2:  `atan2(x,y)` \n Logarithm: `log(x)` \n Power: `pow( < base >, < power >` \n Square root: `sqrt(x)` \n Derivative: `derivative( x , y )`')
+                    .addField('Unit change', ' `x < initial > to < final >` Example: `?math 10 inch to cm`')
+                    .addField('Other Operations', 'Cos: `cos(x)` \n Tan: `tan(x)` \n Determinant: `det([matrix values])` Example: `det([-1, 2; 3, 1])` ')
+                    .addField('Usefull Info', 'Number pi: `pi` Example : ` 1 * pi` \n Degree: `deg` Example: `cos(45 deg)` \n Simplify: `simplify(x)` Example: `simplify(3 + 2 / 4) = "7 / 2 "`')
                     .addField('Official documentation', "[Constants](https://mathjs.org/docs/reference/constants.html) , [Main Page](https://mathjs.org/docs/index.html)")
                     .setTimestamp()
                 return await interaction.reply({embeds: [embed], ephemeral: false})
@@ -79,22 +71,19 @@
                 const embed = new MessageEmbed()
                     .setColor('#38F20A')
                     .setTitle("Lord Bostengard's Commands")
-                    .setDescription("usage = ?music <>")
-                    .addField(':blue_circle: play', "`/music play [link]`\n `?music play [link]`",true)
-                    .addField(':blue_circle: skip', '`/music skip`\n `?music skip`',true)
-                    .addField(':blue_circle: stop', ' `/music stop`\n `?music stop`',true)
+                    .setDescription(`\`/music play\`: plays a song from youtube or spotify
+                                     \`/music skip\`: skips the current song
+                                     \`/music stop\`: stops playing music
+                                     \`/music loop\`: loops the current song`)
                     .setTimestamp()
+                    .setFooter({text: "bot created by Bostengard#4691",iconURL: client.user.avatarURL({format: "jpg",size:2048,dynamic: true}) || client.user.defaultAvatarURL})
                 return await interaction.reply({embeds: [embed], ephemeral:false})
             }else if (value.toLowerCase() === "settings"){
                 const embed = new MessageEmbed()
                     .setColor('#38F20A')
-                    .setTitle("Bostenbot Settings")
-                    .setDescription("Usage = `?settings < setting > < amount>` 1(active) 0(inactive)")
-                    .addField(':blue_circle: Music', '`?settings MusicBool < 0/1 >`')
-                    .addField(':blue_circle: Math', '`?settings MathBool < 0/1 >`')
-                    .addField(':blue_circle: Reddit', '`?settings RedditBool < 0/1 >`')
-                    .addField(':blue_circle: Levels', '`?settings LevelsBool < 0/1 >`')
-                    .setTimestamp()
+                    .setTitle("Server Settings")
+                    .setDescription(`To personalize the bot in the server, do the command \`/server-settings\` then choose an option and copy the id of the channel/role or in case of being \`welcome-image\` paste the url of the image`)
+                    .setFooter({text: "bot created by Bostengard#4691",iconURL: client.user.avatarURL({format: "jpg",size:2048,dynamic: true}) || client.user.defaultAvatarURL})
                 return await interaction.reply({embeds: [embed], ephemeral:false})
             }else{
                 return interaction.reply({content:`Couldn't find a module with the name \`${value}\`\n\n This are the available modules: \`User\` \`Moderation\` \`Math\` \`Music\` \`Settings\` `,ephemeral:true})

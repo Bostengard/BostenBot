@@ -10,7 +10,6 @@ const player = new Player(client, {
 	leaveOnEmpty:true,
 	timeout: 1000,
 })
-
 const Canvas = require('canvas')
 const { CreateDatabase } = require(path.resolve('./Functions/CreateDatabase.js'))
 client.CreateDatabase = CreateDatabase
@@ -29,16 +28,15 @@ client.once('ready', async () => {
 	client.guilds.cache.forEach(function (guild){
 		GuildArray.push(`${guild.id}.db`)
 	})
-	DatabasesArray.forEach((database) =>{
+	DatabasesArray.forEach(async (database) =>{
 		if(!GuildArray.includes(database)){
-			fs.unlinkSync(path.join(path.resolve('./databases/'), `${database}`))
-			console.log(`Removed ${database}.db`)
+			await fs.unlinkSync(path.join(path.resolve('./databases/'), `${database}`))
+			console.log(`Removed ${database}`)
 		}
 	})
-
 });
 client.on('interactionCreate', async interaction => {
-	CreateDatabase(interaction.guild.id)
+	await CreateDatabase(interaction.guild.id)
 	if (!interaction.isCommand()) return;
 	const command = client.commands.get(interaction.commandName);
 	if (!command) return;
@@ -48,17 +46,16 @@ client.on('interactionCreate', async interaction => {
 		console.error(error);
 	}
 });
-
 let levels = [20,40,70,130,190,250,310,400,640,1000,1650,2500,5000,8000,13000,19000,27000,40000,60000,850000,100000]
 client.on('messageCreate', async message => {
 	if(message.author.bot)return;
 	if(!message.guild) return;
 	if(message.webhookId) return;
-	CreateDatabase(message.guild.id)
+	await CreateDatabase(message.guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${message.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	await db.get(`SELECT * FROM data WHERE UserID = ${message.author.id}`, async (err,row) => {
 		if(err){
-			return console.log(err);
+			return console.log("First Time Message Table created");
 		}
 		if(row === undefined){
 			return db.run(`INSERT INTO data VALUES (?,?,?,?)`,[message.author.tag,message.author.id,1,1])
@@ -70,7 +67,7 @@ client.on('messageCreate', async message => {
 					await db.get(`SELECT * FROM ServerSettings`, async (err,row) =>{
 						if(err) return;
 						if(row === undefined){return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])}
-						ID = row.WelcomeChannel
+						ID = row.LevelsChannel
 						try{
 							await message.guild.channels.fetch(`${ID}`)
 						}catch{
@@ -97,14 +94,12 @@ client.on('messageUpdate',async(oldMessage,newMessage) => {
 	}
 	if(!newMessage.guild){return;}
 	if(oldMessage.content.includes("https")){return;}
-	CreateDatabase(newMessage.guild.id);
-	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
+	await CreateDatabase(newMessage.guild.id);
+	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${newMessage.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
-		console.log(row)
 		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
-
 		const ID = row.LogsChannel
 		try{
 			await newMessage.guild.channels.fetch(`${ID}`)
@@ -112,7 +107,6 @@ client.on('messageUpdate',async(oldMessage,newMessage) => {
 			return;
 		}
 		logsChannel = await newMessage.guild.channels.cache.get(ID)
-		console.log(logsChannel)
 		const embed = new MessageEmbed()
 			.setTitle('Message Edited')
 			.setTimestamp()
@@ -132,24 +126,20 @@ client.on('messageUpdate',async(oldMessage,newMessage) => {
 client.on('messageDelete', async messageDelete =>{
 	if(messageDelete.author.bot){return;}
 	if(!messageDelete.guild){return;}
-	CreateDatabase(messageDelete.guild.id)
+	await CreateDatabase(messageDelete.guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${messageDelete.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
-		console.log(row)
 		if(row === undefined) db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
-
 		const ID = row.LogsChannel
 		try{
 			await messageDelete.guild.channels.fetch(`${ID}`)
 		}catch {
 			return;
 		}
-
-
 		logsChannel = await messageDelete.guild.channels.cache.get(ID)
-		console.log(logsChannel)
+		if(!logsChannel){ return }
 		const embed = new MessageEmbed()
 			.setTitle('Message Deleted')
 			.addField('Message', `\`\`\`${messageDelete.content}\`\`\``,true)
@@ -158,12 +148,12 @@ client.on('messageDelete', async messageDelete =>{
 		try {
 			return logsChannel.send({embeds: [embed]})
 		}catch (e) {
-			console.log(e)
+			console.log('UNEXPECTED ERROR -----> \n' + e)
 		}
 	})
 })
 client.on('messageDeleteBulk', async (messages) =>{
-	CreateDatabase(messages.first().guild.id)
+	await CreateDatabase(messages.first().guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${messages.first().guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	await db.get(`Select * FROM ServerSettings`,async (err,row) =>{
 		if(err) return;
@@ -182,6 +172,9 @@ client.on('messageDeleteBulk', async (messages) =>{
 		messages.forEach((e) =>{
 			texto += `${e.author.tag}: ${e.content}\n`
 		})
+		if(!texto.toString().length >4096){
+			texto.splice(4096,texto.length-4096)
+		}
 		const embed = new MessageEmbed()
 			.setTitle(`${messages.size + 1} Messages Deleted`)
 			.setDescription(`\`\`\`${texto}\`\`\``)
@@ -205,7 +198,7 @@ const applyText = (canvas, text) => {
 	return context.font;
 };
 client.on('guildMemberAdd', async member =>{
-	CreateDatabase(member.guild.id)
+	await CreateDatabase(member.guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${member.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let role;
 	let logsChannel;
@@ -299,7 +292,7 @@ client.on('guildMemberAdd', async member =>{
 	})
 })
 client.on('guildMemberRemove', async member =>{
-	CreateDatabase(member.guild.id)
+	await CreateDatabase(member.guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${member.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) => {
@@ -314,24 +307,24 @@ client.on('guildMemberRemove', async member =>{
 			return
 		}
 
-		logsChannel = await member.guild.channels.cache.get(ID)
-		console.log(logsChannel)
+		logsChannel = await member.guild.channels.cache.get(`${ID}`)
+		if(!logsChannel) return;
 		const embed = new MessageEmbed()
 			.setTitle('User Left')
 			.addField('User Info', `Mention: ${member.toString()}\n ID: ${member.id.toString()}\n Account Creation Date: \`${moment(member.user.createdAt).format('DD/MM/YYYY hh:mm:ss')}\` ${moment(member.user.createdTimestamp).fromNow()}\n Joined Date: \`${moment(member.joinedAt).format('DD/MM/YYYY hh:mm:ss')}\` ${moment(member.joinedTimestamp).fromNow()}`)
 			.setTimestamp()
 		try {
 			return logsChannel.send({embeds: [embed]})
-		} catch (e) {
-			console.log(e)
-		}
+		} catch (e) {}
 	})
 
 })
 client.on('guildCreate', async guild =>{
-	CreateDatabase(guild.id)
+	await CreateDatabase(guild.id)
+	console.log('+1 :)')
 })
 client.on('guildDelete', async guild =>{
-	fs.unlinkSync(path.join(path.resolve('./Databases/'), `${guild.id}.db`))
+	await fs.unlinkSync(path.join(path.resolve('./Databases/'), `${guild.id}.db`))
+	console.log('-1 :(')
 })
 client.login(token);
