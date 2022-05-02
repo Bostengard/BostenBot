@@ -16,7 +16,7 @@ module.exports = {
             .setColor('#0000ff')
             .setTitle('Server Info')
             .setDescription(`Showing info for ${interaction.guild.name}`)
-            .addField(`Members`, `Total Members: \`${interaction.guild.memberCount}\`\nBots: \`${interaction.guild.members.cache.filter(member => !member.user.bot).size}\`\n Administrators: \`${Administrator}\``)
+            .addField(`Members`, `Total Members: \`${interaction.guild.memberCount}\`\nBots: \`${interaction.guild.members.cache.filter(member => member.user.bot).size}\`\n Administrators: \`${Administrator}\``)
             .addField(`Server`, `Created At: \`${moment(interaction.guild.createdAt).format("DD/MM/YY")}\` ${moment(interaction.guild.createdTimestamp).fromNow()} \nServer Owner: ${ServerOwner} \n Guild ID: \`${interaction.guildId}\` `)
             .addField('Roles', rolemap)
             .setThumbnail(interaction.guild.iconURL({format:"png", dynamic: true, size: 2048}))

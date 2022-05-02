@@ -32,6 +32,9 @@ module.exports = {
 
         await db.all(`SELECT * FROM cases WHERE UserID = ?`,[user.id], async (err,row) =>{
             if(err){return interaction.editReply('An error happened *(cry about it)*')}
+            if(row === undefined){
+                return interaction.editReply("this user has no cases")
+            }
             let gEmbed = async (start) =>{
                 const current = row.slice(start,start + 7)
                 return new MessageEmbed({
@@ -69,6 +72,5 @@ module.exports = {
             })
 
         })
-
     },
 };

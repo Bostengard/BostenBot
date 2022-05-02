@@ -27,7 +27,7 @@ module.exports = {
             return interaction.editReply({content:"You're not on a voice channel"})
         }
 
-        await interaction.user.fetch()
+        await interaction.user.fetch
         if(interaction.options.getSubcommand() === 'play'){
             const songname = interaction.options.getString('song-link')
             if(!songname.includes('https:')){return interaction.editReply(`That's not the link of a song`)}
@@ -60,7 +60,7 @@ module.exports = {
             return interaction.editReply({embeds: [embed]})
         }else if(interaction.options.getSubcommand() === 'loop'){
             if(guildQueue.repeatMode === RepeatMode.DISABLED){
-                guildQueue.setRepeatMode(RepeatMode.SONG)
+                guildQueue.setRepeatMode(RepeatMode.QUEUE)
                 const embed = new MessageEmbed()
                     .setColor('#ff0000')
                     .setTitle('Looping Song!')

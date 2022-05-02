@@ -51,6 +51,11 @@ client.on('messageCreate', async message => {
 	if(message.author.bot)return;
 	if(!message.guild) return;
 	if(message.webhookId) return;
+	if(message.mentions.users.first().id === client.user.id){
+		const embed = new MessageEmbed()
+			.setTitle('`/help` to know more about me')
+		return message.channel.send({embeds: [embed]})
+	}
 	await CreateDatabase(message.guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${message.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
 	await db.get(`SELECT * FROM data WHERE UserID = ${message.author.id}`, async (err,row) => {
@@ -146,6 +151,10 @@ client.on('messageDelete', async messageDelete =>{
 			.addField('Info', `Channel: ${messageDelete.channel.toString()}\n Author: ${messageDelete.author.toString()}`)
 			.setTimestamp()
 		try {
+			if(messageDelete.attachments.first()) {
+				const file = new MessageAttachment(messageDelete.attachments.first().url, "File")
+				return logsChannel.send({embeds: [embed],files: [file]})
+			}
 			return logsChannel.send({embeds: [embed]})
 		}catch (e) {
 			console.log('UNEXPECTED ERROR -----> \n' + e)
@@ -165,7 +174,6 @@ client.on('messageDeleteBulk', async (messages) =>{
 		}catch {
 			return ;
 		}
-
 		logsChannel = await messages.first().guild.channels.cache.get(ID)
 		console.log(logsChannel)
 		let texto = "";
@@ -211,7 +219,6 @@ client.on('guildMemberAdd', async member =>{
 		const ID = row.LogsChannel;
 		const WelcomeID = row.WelcomeChannel
 		const image = row.WelcomeImage
-
 		//get the logschannel and send message
 		if(ID !== 0){
 			try{await member.guild.channels.fetch(`${ID}`)}catch{
@@ -231,14 +238,12 @@ client.on('guildMemberAdd', async member =>{
 		if(roleId !== 0){
 			//get the role
 			try{await  member.guild.roles.fetch(`${roleId}`)}catch {
-				console.log(e)
 			}
 			role = await member.guild.roles.cache.get(roleId)
 			//add role
 			try{
 				await member.roles.add(role)
 			}catch(e){
-				console.log(e)
 			}
 		}
 		if(WelcomeID !== 0){
@@ -254,7 +259,7 @@ client.on('guildMemberAdd', async member =>{
 				try{
 					background = await Canvas.loadImage(image);
 				}catch(e) {
-					background = await Canvas.loadImage('./Background.png')
+					background = await Canvas.loadImage(path.resolve('./Background.png'))
 				}
 
 				context.drawImage(background, 0, 0, canvas.width, canvas.height);
@@ -297,16 +302,13 @@ client.on('guildMemberRemove', async member =>{
 	let logsChannel;
 	await db.get(`Select * FROM ServerSettings`,async (err,row) => {
 		if (err) return;
-		console.log(row)
 		if (row === undefined) return db.run(`INSERT INTO ServerSettings VALUES (?,?,?,?,?)`,[0,0,0,0,0])
-
 		const ID = row.LogsChannel
 		try{
 			await member.guild.channels.fetch(`${ID}`)
 		}catch {
 			return
 		}
-
 		logsChannel = await member.guild.channels.cache.get(`${ID}`)
 		if(!logsChannel) return;
 		const embed = new MessageEmbed()

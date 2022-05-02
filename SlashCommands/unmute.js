@@ -44,7 +44,7 @@ module.exports = {
             .setColor('#0000ff')
             .setTitle('User Kicked')
             .addField('General Info', `User Kicked: ${user.toString()} \`${user.id}\`\n Reason:\`${reason}\``)
-            .addField('Unmuted by', interaction.user.toString() + `\`${interaction.user.id}\``)
+            .addField('Kicked by', interaction.user.toString() + `\`${interaction.user.id}\``)
             .setTimestamp()
         client.CreateDatabase(interaction.guild.id)
         let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)

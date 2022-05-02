@@ -27,7 +27,7 @@ module.exports = {
         await punish(reason,user,interaction.member,"warn",interaction)
         const embed = new MessageEmbed()
             .setColor('#0000ff')
-            .setTitle('User Warned')
+            .setTitle(user.displayName + ' Warned')
             .addField('Reason', reason)
             .addField('Warned by', interaction.user.toString() + `\`${interaction.user.id}\``)
             .setTimestamp()

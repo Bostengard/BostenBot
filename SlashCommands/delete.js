@@ -11,6 +11,7 @@ module.exports = {
         .addIntegerOption(option => option.setName('messages').setDescription('the message to be deleted').setRequired(true)),
     async execute(interaction,client) {
         if(!interaction.member.permissions.has(Permissions.FLAGS.MANAGE_MESSAGES)) return interaction.reply({content: "Missing Permissions", ephemeral: true})
+        interaction.deferReply()
         let value = interaction.options.getInteger('messages')
         if(value > 99){return interaction.reply({content: "Max 99 Messages", ephemeral: true})}
 
@@ -22,9 +23,9 @@ module.exports = {
         try{
             await interaction.channel.bulkDelete(value)
         }catch {
-            return await interaction.reply({content: "Messages are to old to be deleted", ephemeral: true})
+            return await interaction.editReply("Messages are to old to be deleted")
         }
-        interaction.reply({embeds: [embed]})
+        interaction.editReply({embeds: [embed]})
         client.CreateDatabase(interaction.guild.id)
         let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${interaction.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)
         let ID;
@@ -42,6 +43,5 @@ module.exports = {
                 return false;
             }
         })
-
     },
 };
