@@ -1,4 +1,3 @@
-const fetch = require('node-fetch')
 const { ShardingManager } = require('discord.js');
 const path = require('path')
 const configPath = path.resolve('./Config.json')

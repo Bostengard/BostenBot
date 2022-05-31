@@ -10,11 +10,10 @@ module.exports = {
         .setDescription('Deletes a number (max99) of messages')
         .addIntegerOption(option => option.setName('messages').setDescription('the message to be deleted').setRequired(true)),
     async execute(interaction,client) {
-        if(!interaction.member.permissions.has(Permissions.FLAGS.MANAGE_MESSAGES)) return interaction.reply({content: "Missing Permissions", ephemeral: true})
-        interaction.deferReply()
-        let value = interaction.options.getInteger('messages')
+         let value = interaction.options.getInteger('messages')
         if(value > 99){return interaction.reply({content: "Max 99 Messages", ephemeral: true})}
-
+        if(!interaction.member.permissions.has(Permissions.FLAGS.MANAGE_MESSAGES)) return interaction.reply({content: "Missing Permissions", ephemeral: true})
+        interaction.deferReply();
         const embed = new MessageEmbed()
             .setColor('#0000ff')
             .setTitle(`Deleted ${value} messages`)

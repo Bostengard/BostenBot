@@ -22,18 +22,7 @@ for (const file of commandFiles) {
 }
 client.once('ready', async () => {
 	console.log('Bostenbot Ready!');
-	const DatabasesArray = fs.readdirSync(path.resolve('./Databases'))
-	let GuildArray = []
-	await client.guilds.fetch()
-	client.guilds.cache.forEach(function (guild){
-		GuildArray.push(`${guild.id}.db`)
-	})
-	DatabasesArray.forEach(async (database) =>{
-		if(!GuildArray.includes(database)){
-			await fs.unlinkSync(path.join(path.resolve('./databases/'), `${database}`))
-			console.log(`Removed ${database}`)
-		}
-	})
+	
 });
 client.on('interactionCreate', async interaction => {
 	await CreateDatabase(interaction.guild.id)
@@ -51,10 +40,13 @@ client.on('messageCreate', async message => {
 	if(message.author.bot)return;
 	if(!message.guild) return;
 	if(message.webhookId) return;
-	if(message.mentions.users.first().id === client.user.id){
-		const embed = new MessageEmbed()
+	if(message.mentions.users.first()){
+        if(message.mentions.users.first().id === client.user.id){
+            const embed = new MessageEmbed()
 			.setTitle('`/help` to know more about me')
 		return message.channel.send({embeds: [embed]})
+        }
+		
 	}
 	await CreateDatabase(message.guild.id)
 	let db = new sqlite.Database(path.join(path.resolve('./Databases/'), `${message.guild.id}.db`), sqlite.OPEN_READWRITE | sqlite.OPEN_CREATE)

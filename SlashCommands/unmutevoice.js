@@ -16,7 +16,7 @@ module.exports = {
             }catch{}
 
         })
-        interaction.reply({content:"succesfully muted " + channel.toString() + " " + reason,ephemeral:false})
+        interaction.reply({content:"Successfully muted " + channel.toString() + " " + reason,ephemeral:false})
 
     },
 };

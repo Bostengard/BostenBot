@@ -45,6 +45,7 @@ module.exports = {
                 .setFooter({text: `song added by ${interaction.user.tag}`,iconURL: interaction.user.avatarURL})
             return interaction.editReply({embeds: [embed]})
         }else if(interaction.options.getSubcommand() === 'skip'){
+            if(!guildQueue){return interaction.editReply({content: 'U can\'t skip nothing'})}
             guildQueue.skip()
             const embed = new MessageEmbed()
                 .setColor('#ff0000')
@@ -52,6 +53,7 @@ module.exports = {
                 .setFooter({text: `song skipped by ${interaction.user.tag}`,iconURL: interaction.user.avatarURL})
             return interaction.editReply({embeds: [embed]})
         }else if(interaction.options.getSubcommand() === 'stop'){
+            if(!guildQueue){return interaction.editReply({content: "u can't stop nothing"})}
             guildQueue.stop()
             const embed = new MessageEmbed()
                 .setColor('#ff0000')

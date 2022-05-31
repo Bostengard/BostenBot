@@ -14,7 +14,7 @@ module.exports = {
                 .setTitle(`${mathjs.evaluate(operation)}`)
             return interaction.reply({embeds: [embed]})
         }catch (e){
-            return interaction.reply({content:'Incorrect operation Syntax',ephemeral: true})
+            return await interaction.reply({content:'Incorrect operation Syntax',ephemeral: true})
         }
     },
 };

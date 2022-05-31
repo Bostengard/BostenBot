@@ -75,7 +75,7 @@ module.exports = {
             .setTitle(`${title}`)
             .setDescription(text)
             .setFooter({text: `poll created by ${interaction.user.tag}`,iconURL: interaction.user.displayAvatarURL({format: "jpg", size: 2048, dynamic: true}) || interaction.user.defaultAvatarURL})
-        await interaction.reply({ephemeral: true, content: "Poll created"})
+        await interaction.reply({ephemeral: true, content: "Poll created! lets see the votes"})
 
         let message = await interaction.channel.send({embeds: [embed]})
 
