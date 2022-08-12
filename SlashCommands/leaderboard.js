@@ -28,7 +28,7 @@ module.exports = {
                 embed.addField(`Top ${amount}`, `${row.UserTag} with ${row.Messages}`)
                 amount++
             })
-            return interaction.reply({embeds: [embed]})
+            return await interaction.reply({embeds: [embed]})
         })
     },
 };
