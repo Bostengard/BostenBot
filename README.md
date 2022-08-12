@@ -1,5 +1,5 @@
 # BostenBot
-a discord bot made by bostengard#4691 in NodeJS `v16.16.0` and Discord.JS `v13.7.0`.
+a discord bot made by bostengard#4691 with Memw#6969's help in NodeJS `v16.16.0` and Discord.JS `v13.7.0`.
 
 # Installing the bot
 To install the bot you need a few dependencies as:
